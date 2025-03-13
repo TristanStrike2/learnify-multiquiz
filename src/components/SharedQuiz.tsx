@@ -157,14 +157,9 @@ export function SharedQuiz() {
       });
 
       return {
-        question: {
-          text: question.text,
-          correctOptionId: question.correctOptionId,
-          options: question.options.map(option => ({
-            id: option.id,
-            text: option.text
-          }))
-        },
+        question: question.text,
+        correctOptionId: question.correctOptionId,
+        options: question.options,
         selectedOptionId: selectedAnswer,
         isCorrect: isCorrect,
         isTimeout: isTimeout
@@ -300,17 +295,17 @@ export function SharedQuiz() {
           questionsWithAnswers: result.questionsWithAnswers.map(qa => {
             // Log each question's data for debugging
             console.log('Processing question for PDF:', {
-              questionText: qa.question.text,
-              correctOptionId: qa.question.correctOptionId,
+              questionText: qa.question,
+              correctOptionId: qa.correctOptionId,
               selectedOptionId: qa.selectedOptionId,
-              numOptions: qa.question.options.length
+              numOptions: qa.options.length
             });
             
             return {
               question: {
-                text: qa.question.text,
-                correctOptionId: qa.question.correctOptionId,
-                options: qa.question.options.map(opt => ({
+                text: qa.question,
+                correctOptionId: qa.correctOptionId,
+                options: qa.options.map(opt => ({
                   id: opt.id,
                   text: opt.text
                 }))
