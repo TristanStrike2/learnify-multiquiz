@@ -115,40 +115,8 @@ export function SharedQuiz() {
   const handleQuizComplete = async () => {
     setIsSubmitting(true);
     try {
-      if (!quiz || !quiz.modules[0] || !quiz.modules[0].questions) {
-        throw new Error('Quiz data is incomplete');
-      }
-
-      const module = quiz.modules[0];
-      const questions = module.questions;
-      
-      // Create properly structured results
-      const results = {
-        [module.id]: {
-          moduleId: module.id,
-          totalQuestions: questions.length,
-          correctAnswers: answers.filter((answer, index) => 
-            answer === questions[index].correctOptionId
-          ).length,
-          incorrectAnswers: questions.length - answers.filter((answer, index) => 
-            answer === questions[index].correctOptionId
-          ).length,
-          questionsWithAnswers: questions.map((question, index) => ({
-            question: {
-              text: question.text,
-              correctOptionId: question.correctOptionId,
-              options: question.options.map(option => ({
-                id: option.id,
-                text: option.text
-              }))
-            },
-            selectedOptionId: answers[index] || '',
-            isCorrect: answers[index] === question.correctOptionId
-          }))
-        }
-      };
-
-      await submitQuizResults(quizId!, userName, results);
+      const result = calculateScore();
+      await submitQuizResults(quizId!, userName, { [quiz.modules[0].id]: result });
       setQuizComplete(true);
       toast({
         title: 'Quiz Completed!',
@@ -179,13 +147,24 @@ export function SharedQuiz() {
       const isTimeout = selectedAnswer === 'timeout';
       const isCorrect = !isTimeout && selectedAnswer === question.correctOptionId;
 
+      // Log the question data for debugging
+      console.log('Processing question:', {
+        questionText: question.text,
+        correctOptionId: question.correctOptionId,
+        selectedAnswer,
+        isCorrect
+      });
+
+      // Ensure question text is a string
+      const questionText = String(question.text || 'Question text unavailable');
+
       return {
         question: {
-          text: question.text,
+          text: questionText,
           correctOptionId: question.correctOptionId,
           options: question.options.map(option => ({
             id: option.id,
-            text: option.text
+            text: String(option.text || 'Option text unavailable')
           }))
         },
         selectedOptionId: selectedAnswer,
@@ -196,6 +175,15 @@ export function SharedQuiz() {
 
     const correctAnswers = questionsWithAnswers.filter(qa => qa.isCorrect).length;
     const totalQuestions = questions.length;
+
+    // Log the final results for debugging
+    console.log('Final quiz results:', {
+      moduleId: module.id,
+      courseName: quiz.courseName,
+      totalQuestions,
+      correctAnswers,
+      questionsCount: questionsWithAnswers.length
+    });
 
     return {
       moduleId: module.id,
@@ -289,52 +277,71 @@ export function SharedQuiz() {
   }
 
   if (quizComplete) {
-    if (!quiz || !quiz.modules[0]) {
+    const result = calculateScore();
+    if (typeof result === 'number') {
       return (
         <div className="container max-w-2xl mx-auto py-8 space-y-8">
           <div className="text-center space-y-4">
             <h2 className="text-3xl font-bold">Error</h2>
-            <p className="text-xl">Quiz data is incomplete.</p>
+            <p className="text-xl">Failed to calculate quiz results.</p>
           </div>
         </div>
       );
     }
 
-    const module = quiz.modules[0];
-    const questions = module.questions;
-    
-    // Create properly structured PDF data
     const pdfData = {
       userName: userName || 'User',
-      courseName: quiz.courseName || 'Quiz Results',
-      modules: quiz.modules,
+      courseName: result.courseName || 'Quiz Results',
+      modules: result.modules || [],
       results: {
-        [module.id]: {
-          moduleId: module.id,
-          totalQuestions: questions.length,
-          correctAnswers: answers.filter((answer, index) => 
-            answer === questions[index].correctOptionId
-          ).length,
-          incorrectAnswers: questions.length - answers.filter((answer, index) => 
-            answer === questions[index].correctOptionId
-          ).length,
-          questionsWithAnswers: questions.map((question, index) => ({
-            question: {
-              text: question.text,
-              correctOptionId: 'correct',
-              options: question.options.map((option, i) => ({
-                id: option.id === question.correctOptionId ? 'correct' : `wrong${i}`,
-                text: option.text
-              }))
-            },
-            selectedOptionId: answers[index] === question.correctOptionId ? 'correct' :
-              answers[index] === 'timeout' ? 'timeout' :
-              `wrong${question.options.findIndex(opt => opt.id === answers[index])}`,
-            isCorrect: answers[index] === question.correctOptionId
-          }))
+        [result.moduleId]: {
+          moduleId: result.moduleId,
+          totalQuestions: result.totalQuestions,
+          correctAnswers: result.correctAnswers,
+          incorrectAnswers: result.incorrectAnswers,
+          questionsWithAnswers: result.questionsWithAnswers.map(qa => {
+            // Log the question data for debugging
+            console.log('Processing question for PDF:', {
+              questionText: qa.question.text,
+              correctOptionId: qa.question.correctOptionId,
+              selectedOptionId: qa.selectedOptionId,
+              isCorrect: qa.isCorrect,
+              isTimeout: qa.isTimeout,
+              options: qa.question.options
+            });
+
+            // Ensure question text is a string and not an object
+            const questionText = typeof qa.question.text === 'object' 
+              ? JSON.stringify(qa.question.text) 
+              : String(qa.question.text || 'Question text unavailable');
+
+            return {
+              question: {
+                text: questionText,
+                correctOptionId: qa.question.correctOptionId,
+                options: qa.question.options.map(opt => {
+                  // Ensure option text is a string and not an object
+                  const optionText = typeof opt.text === 'object'
+                    ? JSON.stringify(opt.text)
+                    : String(opt.text || 'Option text unavailable');
+                  
+                  return {
+                    id: opt.id,
+                    text: optionText
+                  };
+                })
+              },
+              selectedOptionId: qa.selectedOptionId,
+              isCorrect: qa.isCorrect,
+              isTimeout: qa.isTimeout
+            };
+          })
         }
       }
     };
+
+    // Log the final PDF data for debugging
+    console.log('Final PDF data:', pdfData);
 
     return (
       <div className="container max-w-2xl mx-auto py-8 space-y-8">
