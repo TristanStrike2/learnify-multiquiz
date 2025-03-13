@@ -147,24 +147,48 @@ export function SharedQuiz() {
       const isTimeout = selectedAnswer === 'timeout';
       const isCorrect = !isTimeout && selectedAnswer === question.correctOptionId;
 
-      // Log the question data for debugging
+      // Parse question text if it's a JSON string
+      let questionText = question.text;
+      try {
+        if (typeof questionText === 'string' && questionText.startsWith('{')) {
+          const parsed = JSON.parse(questionText);
+          questionText = parsed.text || questionText;
+        }
+      } catch (e) {
+        console.log('Error parsing question text:', e);
+      }
+
+      // Parse options if they're JSON strings
+      const formattedOptions = question.options.map(opt => {
+        let optionText = opt.text;
+        try {
+          if (typeof optionText === 'string' && optionText.startsWith('{')) {
+            const parsed = JSON.parse(optionText);
+            optionText = parsed.text || optionText;
+          }
+        } catch (e) {
+          console.log('Error parsing option text:', e);
+        }
+        return {
+          id: opt.id,
+          text: optionText
+        };
+      });
+
+      // Log the processed question data
       console.log('Processing question:', {
-        questionText: question.text,
+        questionText,
         correctOptionId: question.correctOptionId,
         selectedAnswer,
         isCorrect,
-        numOptions: question.options.length
+        numOptions: formattedOptions.length
       });
 
-      // Ensure question text and options are properly formatted strings
       return {
         question: {
-          text: typeof question.text === 'string' ? question.text : JSON.stringify(question.text),
+          text: questionText,
           correctOptionId: question.correctOptionId,
-          options: question.options.map(opt => ({
-            id: opt.id,
-            text: typeof opt.text === 'string' ? opt.text : JSON.stringify(opt.text)
-          }))
+          options: formattedOptions
         },
         selectedOptionId: selectedAnswer,
         isCorrect: isCorrect,
