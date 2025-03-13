@@ -37,6 +37,11 @@ export function ThankYouPage() {
     try {
       setIsGeneratingPDF(true);
       
+      // Ensure questionsWithAnswers exists before attempting to map it
+      if (!quizData.results || !quizData.results.questionsWithAnswers) {
+        throw new Error('Quiz results data is incomplete');
+      }
+      
       const pdfData = {
         userName,
         courseName: quizData.results.courseName || 'Quiz Results',
@@ -44,35 +49,51 @@ export function ThankYouPage() {
         results: {
           module1: {
             moduleId: 'module1',
-            totalQuestions: quizData.results.totalQuestions,
-            correctAnswers: quizData.results.correctAnswers,
-            incorrectAnswers: quizData.results.totalQuestions - quizData.results.correctAnswers,
-            questionsWithAnswers: quizData.results.questionsWithAnswers.map((qa: any) => {
-              // Determine if this question was timed out
-              const isTimeout = qa.selectedAnswer === 'timeout';
-              
-              // Create the options array with proper IDs and correct answer marking
-              const options = qa.allOptions.map((text: string, i: number) => {
-                const isCorrectOption = text === qa.correctAnswer;
-                return {
-                  id: isCorrectOption ? 'correct' : `wrong${i}`,
-                  text: text
-                };
-              });
+            totalQuestions: quizData.results.totalQuestions || 0,
+            correctAnswers: quizData.results.correctAnswers || 0,
+            incorrectAnswers: (quizData.results.totalQuestions || 0) - (quizData.results.correctAnswers || 0),
+            questionsWithAnswers: Array.isArray(quizData.results.questionsWithAnswers) 
+              ? quizData.results.questionsWithAnswers.map((qa: any) => {
+                  // Determine if this question was timed out
+                  const isTimeout = qa.selectedAnswer === 'timeout';
+                  
+                  // Check if allOptions exists
+                  if (!Array.isArray(qa.allOptions)) {
+                    return {
+                      question: {
+                        text: qa.question || 'Unknown question',
+                        correctOptionId: 'correct',
+                        options: [{ id: 'correct', text: qa.correctAnswer || 'Unknown' }]
+                      },
+                      selectedOptionId: isTimeout ? 'timeout' : 'unknown',
+                      isCorrect: qa.isCorrect || false,
+                      isTimeout: isTimeout
+                    };
+                  }
+                  
+                  // Create the options array with proper IDs and correct answer marking
+                  const options = qa.allOptions.map((text: string, i: number) => {
+                    const isCorrectOption = text === qa.correctAnswer;
+                    return {
+                      id: isCorrectOption ? 'correct' : `wrong${i}`,
+                      text: text
+                    };
+                  });
 
-              return {
-                question: {
-                  text: qa.question,
-                  correctOptionId: 'correct', // The correct option always has ID 'correct'
-                  options: options
-                },
-                selectedOptionId: isTimeout ? 'timeout' : 
-                  (qa.selectedAnswer === qa.correctAnswer ? 'correct' : 
-                    `wrong${qa.allOptions.indexOf(qa.selectedAnswer)}`),
-                isCorrect: qa.isCorrect,
-                isTimeout: isTimeout
-              };
-            })
+                  return {
+                    question: {
+                      text: qa.question || 'Unknown question',
+                      correctOptionId: 'correct', // The correct option always has ID 'correct'
+                      options: options
+                    },
+                    selectedOptionId: isTimeout ? 'timeout' : 
+                      (qa.selectedAnswer === qa.correctAnswer ? 'correct' : 
+                        `wrong${qa.allOptions.indexOf(qa.selectedAnswer)}`),
+                    isCorrect: qa.isCorrect || false,
+                    isTimeout: isTimeout
+                  };
+                })
+              : []
           }
         }
       };
@@ -115,7 +136,12 @@ export function ThankYouPage() {
     );
   }
 
-  const score = Math.round((quizData.results.correctAnswers / quizData.results.totalQuestions) * 100);
+  const score = quizData.results && 
+    typeof quizData.results.correctAnswers === 'number' && 
+    typeof quizData.results.totalQuestions === 'number' && 
+    quizData.results.totalQuestions > 0 
+      ? Math.round((quizData.results.correctAnswers / quizData.results.totalQuestions) * 100) 
+      : 0;
 
   return (
     <div className="container max-w-2xl mx-auto py-16 px-4">

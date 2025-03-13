@@ -248,25 +248,44 @@ export function SharedQuiz() {
 
     const result = scoreResult;
     const pdfResults = {
-      moduleId: 'module1',
+      moduleId: quiz.modules[0].id || 'module1',
       totalQuestions: quiz.modules[0].questions.length,
       correctAnswers: result.correctAnswers,
       incorrectAnswers: result.totalQuestions - result.correctAnswers,
-      questionsWithAnswers: quiz.modules[0].questions.map((q, idx) => ({
-        question: {
-          text: q.text,
-          correctOptionId: 'correct',
-          options: q.options.map((opt, i) => ({
-            id: opt === q.correctAnswer ? 'correct' : `wrong${i}`,
-            text: opt
-          }))
-        },
-        selectedOptionId: answers[idx] === 'timeout' ? 'timeout' :
-          answers[idx] === q.correctAnswer ? 'correct' :
-          `wrong${q.options.indexOf(answers[idx])}`,
-        isCorrect: answers[idx] === q.correctAnswer,
-        isTimeout: answers[idx] === 'timeout'
-      }))
+      questionsWithAnswers: quiz.modules[0].questions.map((q, idx) => {
+        // Ensure question has necessary fields
+        const questionText = q.text || 'Unknown question';
+        const options = Array.isArray(q.options) ? q.options : [];
+        const selectedOptionId = answers[idx] || '';
+        const correctOptionId = q.correctOptionId || '';
+        const isCorrect = selectedOptionId === correctOptionId;
+        
+        return {
+          question: {
+            text: questionText,
+            correctOptionId: 'correct',
+            options: options.map((opt, i) => ({
+              id: opt.id === correctOptionId ? 'correct' : `wrong${i}`,
+              text: opt.text || 'Unknown option'
+            }))
+          },
+          selectedOptionId: selectedOptionId === 'timeout' ? 'timeout' :
+            selectedOptionId === correctOptionId ? 'correct' :
+            `wrong${options.findIndex(opt => opt.id === selectedOptionId)}`,
+          isCorrect: isCorrect,
+          isTimeout: selectedOptionId === 'timeout'
+        };
+      })
+    };
+
+    // Create PDF data with proper structure
+    const pdfData = {
+      userName: userName || 'User',
+      courseName: quiz.courseName || 'Quiz Results',
+      modules: quiz.modules || [],
+      results: { 
+        module1: pdfResults 
+      }
     };
 
     return (
@@ -275,12 +294,18 @@ export function SharedQuiz() {
           <h2 className="text-3xl font-bold">Thank You for Completing the Quiz!</h2>
           <p className="text-xl">Your results have been submitted successfully.</p>
           <Button 
-            onClick={() => generatePDF({
-              userName,
-              courseName: quiz.courseName || 'Quiz Results',
-              modules: quiz.modules,
-              results: { module1: pdfResults }
-            })}
+            onClick={() => {
+              try {
+                generatePDF(pdfData);
+              } catch (error) {
+                console.error('Error generating PDF:', error);
+                toast({
+                  title: 'Error',
+                  description: 'Failed to generate PDF. Please try again.',
+                  variant: 'destructive',
+                });
+              }
+            }}
             size="lg"
             className="mt-4"
           >
