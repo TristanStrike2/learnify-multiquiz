@@ -82,9 +82,16 @@ export function generatePDF(params: PDFGeneratorParams): string {
     doc.setDrawColor(color[0], color[1], color[2]);
     
     if (type === 'TIMEOUT') {
-      // For timeout, draw a hollow circle with thick border
+      // For timeout, draw a filled circle with a thick border
       doc.setLineWidth(2);
-      doc.circle(x, y, symbolSize/2, 'S');
+      doc.circle(x, y, symbolSize/2, 'FD'); // 'FD' means fill and draw (stroke)
+      // Draw a small clock symbol
+      const clockSize = symbolSize * 0.6;
+      doc.setLineWidth(1);
+      doc.circle(x, y, clockSize/3, 'S');
+      // Draw clock hands
+      doc.line(x, y, x + clockSize/4, y);
+      doc.line(x, y, x, y - clockSize/4);
       doc.setLineWidth(0.5);
     } else if (type === 'CORRECT' || type === 'INCORRECT') {
       // For selected answers (correct or incorrect), fill the circle completely
@@ -253,16 +260,14 @@ export function generatePDF(params: PDFGeneratorParams): string {
         const textX = margin + OPTION_INDENT;
 
         // Draw the appropriate symbol and set text color
-        if (isTimedOut) {
-          if (isCorrect) {
-            // Show timeout indicator for correct answer when timed out
-            drawSymbol('TIMEOUT', symbolX, symbolY, COLORS.TIMEOUT);
-            doc.setTextColor(COLORS.TIMEOUT[0], COLORS.TIMEOUT[1], COLORS.TIMEOUT[2]);
-          } else {
-            // Show unselected for other options when timed out
-            drawSymbol('CIRCLE', symbolX, symbolY, COLORS.UNSELECTED);
-            doc.setTextColor(COLORS.UNSELECTED[0], COLORS.UNSELECTED[1], COLORS.UNSELECTED[2]);
-          }
+        if (isTimedOut && isCorrect) {
+          // Show timeout indicator for correct answer when timed out
+          drawSymbol('TIMEOUT', symbolX, symbolY, COLORS.TIMEOUT);
+          doc.setTextColor(COLORS.TIMEOUT[0], COLORS.TIMEOUT[1], COLORS.TIMEOUT[2]);
+        } else if (isTimedOut) {
+          // Show unselected for other options when timed out
+          drawSymbol('CIRCLE', symbolX, symbolY, COLORS.UNSELECTED);
+          doc.setTextColor(COLORS.UNSELECTED[0], COLORS.UNSELECTED[1], COLORS.UNSELECTED[2]);
         } else if (isSelected) {
           // Normal selected answer handling
           drawSymbol(isCorrect ? 'CORRECT' : 'INCORRECT', symbolX, symbolY, 
