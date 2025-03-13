@@ -48,14 +48,33 @@ export function SubmissionsPage() {
     if (!submissions.length) return;
     
     try {
+      // Filter out submissions with invalid scores for PDF generation
+      const validSubmissions = submissions.filter(
+        sub => sub.results && 
+        typeof sub.results.correctAnswers === 'number' && 
+        typeof sub.results.totalQuestions === 'number' && 
+        sub.results.totalQuestions > 0
+      );
+      
+      if (!validSubmissions.length) {
+        throw new Error('No valid submission data available');
+      }
+      
       const pdfData = {
         courseName: 'Quiz Results',
-        submissions: submissions.map(sub => ({
-          userName: sub.userName,
-          date: format(new Date(sub.timestamp), 'PPP'),
-          score: `${sub.results.correctAnswers}/${sub.results.totalQuestions}`,
-          percentage: Math.round((sub.results.correctAnswers / sub.results.totalQuestions) * 100)
-        }))
+        submissions: validSubmissions.map(sub => {
+          // Calculate percentage safely
+          const correctAnswers = sub.results.correctAnswers || 0;
+          const totalQuestions = sub.results.totalQuestions || 1; // Avoid division by zero
+          const percentage = Math.round((correctAnswers / totalQuestions) * 100);
+          
+          return {
+            userName: sub.userName || 'Unknown User',
+            date: format(new Date(sub.timestamp || Date.now()), 'PPP'),
+            score: `${correctAnswers}/${totalQuestions}`,
+            percentage: isNaN(percentage) ? 0 : percentage
+          };
+        })
       };
       
       await generateSubmissionReport(pdfData);
@@ -65,6 +84,7 @@ export function SubmissionsPage() {
         description: 'Your results have been downloaded successfully.',
       });
     } catch (error) {
+      console.error('Error generating report:', error);
       toast({
         title: 'Error',
         description: 'Failed to generate PDF. Please try again.',
@@ -98,40 +118,108 @@ export function SubmissionsPage() {
 
   const getAverageScore = () => {
     if (!submissions.length) return 0;
-    const totalPercentage = submissions.reduce((acc, sub) => 
+    
+    // Filter out submissions with invalid scores
+    const validSubmissions = submissions.filter(
+      sub => sub.results && 
+      typeof sub.results.correctAnswers === 'number' && 
+      typeof sub.results.totalQuestions === 'number' && 
+      sub.results.totalQuestions > 0
+    );
+    
+    if (!validSubmissions.length) return 0;
+    
+    const totalPercentage = validSubmissions.reduce((acc, sub) => 
       acc + (sub.results.correctAnswers / sub.results.totalQuestions) * 100, 0);
-    return Math.round(totalPercentage / submissions.length);
+    return Math.round(totalPercentage / validSubmissions.length);
   };
 
   const handleDownloadUserPDF = async (submission: QuizSubmission) => {
     try {
+      // First check if we have all the required data
+      if (!submission || !submission.results) {
+        throw new Error('Submission data is missing or incomplete');
+      }
+
+      // Ensure questionsWithAnswers exists and is an array
+      if (!Array.isArray(submission.results.questionsWithAnswers)) {
+        throw new Error('Question data is missing or incomplete');
+      }
+
       const pdfData = {
-        userName: submission.userName,
-        courseName: submission.results.courseName,
-        modules: submission.results.modules,
+        userName: submission.userName || 'Unknown User',
+        courseName: submission.results.courseName || 'Quiz Results',
+        modules: submission.results.modules || [],
         results: {
           module1: {
             moduleId: 'module1',
-            totalQuestions: submission.results.totalQuestions,
-            correctAnswers: submission.results.correctAnswers,
-            incorrectAnswers: submission.results.totalQuestions - submission.results.correctAnswers,
-            questionsWithAnswers: submission.results.questionsWithAnswers.map((qa: any) => ({
-              question: {
-                text: qa.question,
-                correctOptionId: qa.correctOptionId || 'correct',
-                options: qa.options || qa.allOptions.map((text: string, i: number) => ({
+            totalQuestions: submission.results.totalQuestions || 0,
+            correctAnswers: submission.results.correctAnswers || 0,
+            incorrectAnswers: (submission.results.totalQuestions || 0) - (submission.results.correctAnswers || 0),
+            questionsWithAnswers: submission.results.questionsWithAnswers.map((qa: any) => {
+              // Add thorough null checking for each property
+              if (!qa) {
+                return {
+                  question: {
+                    text: 'Question data missing',
+                    correctOptionId: 'correct',
+                    options: [{ id: 'correct', text: 'Unknown' }]
+                  },
+                  selectedOptionId: 'unknown',
+                  isCorrect: false,
+                  isTimeout: false
+                };
+              }
+
+              // Handle the case where qa.options or qa.allOptions might not exist
+              let options;
+              if (Array.isArray(qa.options)) {
+                options = qa.options;
+              } else if (qa.allOptions && Array.isArray(qa.allOptions)) {
+                options = qa.allOptions.map((text: string, i: number) => ({
                   id: text === qa.correctAnswer ? 'correct' : `wrong${i}`,
                   text: text
-                }))
-              },
-              selectedOptionId: qa.selectedOptionId || (
-                qa.selectedAnswer === 'timeout' ? 'timeout' :
-                qa.selectedAnswer === qa.correctAnswer ? 'correct' :
-                `wrong${qa.allOptions.indexOf(qa.selectedAnswer)}`
-              ),
-              isCorrect: qa.isCorrect,
-              isTimeout: qa.selectedAnswer === 'timeout'
-            }))
+                }));
+              } else {
+                // Fallback if neither options nor allOptions exists
+                options = [
+                  { id: 'correct', text: qa.correctAnswer || 'Unknown correct answer' },
+                  { id: 'wrong1', text: 'Option B' },
+                  { id: 'wrong2', text: 'Option C' },
+                  { id: 'wrong3', text: 'Option D' }
+                ];
+              }
+
+              // Determine the selected option ID with proper null checking
+              let selectedOptionId;
+              if (qa.selectedOptionId) {
+                selectedOptionId = qa.selectedOptionId;
+              } else if (qa.selectedAnswer) {
+                if (qa.selectedAnswer === 'timeout') {
+                  selectedOptionId = 'timeout';
+                } else if (qa.selectedAnswer === qa.correctAnswer) {
+                  selectedOptionId = 'correct';
+                } else if (qa.allOptions && Array.isArray(qa.allOptions)) {
+                  const index = qa.allOptions.indexOf(qa.selectedAnswer);
+                  selectedOptionId = index !== -1 ? `wrong${index}` : 'unknown';
+                } else {
+                  selectedOptionId = 'unknown';
+                }
+              } else {
+                selectedOptionId = 'unknown';
+              }
+
+              return {
+                question: {
+                  text: qa.question || 'Unknown question',
+                  correctOptionId: qa.correctOptionId || 'correct',
+                  options: options
+                },
+                selectedOptionId: selectedOptionId,
+                isCorrect: !!qa.isCorrect,
+                isTimeout: qa.selectedAnswer === 'timeout'
+              };
+            })
           }
         }
       };
@@ -275,7 +363,14 @@ export function SubmissionsPage() {
           </Card>
         ) : (
           submissions.map((submission, index) => {
-            const percentage = Math.round((submission.results.correctAnswers / submission.results.totalQuestions) * 100);
+            // Calculate percentage safely with validation
+            const percentage = submission.results && 
+              typeof submission.results.correctAnswers === 'number' && 
+              typeof submission.results.totalQuestions === 'number' && 
+              submission.results.totalQuestions > 0
+                ? Math.round((submission.results.correctAnswers / submission.results.totalQuestions) * 100)
+                : 0;
+            
             return (
               <Card 
                 key={submission.timestamp}
