@@ -54,7 +54,7 @@ export default function QuizQuestion({
     setShowQuestion(true);
     setTimerKey(prev => prev + 1);
     setIsSubmitted(false);
-  }, [question]);
+  }, [questionNumber]);
 
   const handleTimeout = () => {
     setIsTimedOut(true);
