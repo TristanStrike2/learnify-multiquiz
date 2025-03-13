@@ -156,13 +156,14 @@ export function SharedQuiz() {
         numOptions: question.options.length
       });
 
+      // Ensure question text and options are properly formatted strings
       return {
         question: {
-          text: question.text,
+          text: typeof question.text === 'string' ? question.text : JSON.stringify(question.text),
           correctOptionId: question.correctOptionId,
           options: question.options.map(opt => ({
             id: opt.id,
-            text: opt.text
+            text: typeof opt.text === 'string' ? opt.text : JSON.stringify(opt.text)
           }))
         },
         selectedOptionId: selectedAnswer,
