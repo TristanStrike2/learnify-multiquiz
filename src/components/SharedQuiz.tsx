@@ -115,8 +115,40 @@ export function SharedQuiz() {
   const handleQuizComplete = async () => {
     setIsSubmitting(true);
     try {
-      const result = calculateScore();
-      await submitQuizResults(quizId!, userName, { [quiz.modules[0].id]: result });
+      if (!quiz || !quiz.modules[0] || !quiz.modules[0].questions) {
+        throw new Error('Quiz data is incomplete');
+      }
+
+      const module = quiz.modules[0];
+      const questions = module.questions;
+      
+      // Create properly structured results
+      const results = {
+        [module.id]: {
+          moduleId: module.id,
+          totalQuestions: questions.length,
+          correctAnswers: answers.filter((answer, index) => 
+            answer === questions[index].correctOptionId
+          ).length,
+          incorrectAnswers: questions.length - answers.filter((answer, index) => 
+            answer === questions[index].correctOptionId
+          ).length,
+          questionsWithAnswers: questions.map((question, index) => ({
+            question: {
+              text: question.text,
+              correctOptionId: question.correctOptionId,
+              options: question.options.map(option => ({
+                id: option.id,
+                text: option.text
+              }))
+            },
+            selectedOptionId: answers[index] || '',
+            isCorrect: answers[index] === question.correctOptionId
+          }))
+        }
+      };
+
+      await submitQuizResults(quizId!, userName, results);
       setQuizComplete(true);
       toast({
         title: 'Quiz Completed!',
@@ -257,42 +289,48 @@ export function SharedQuiz() {
   }
 
   if (quizComplete) {
-    const result = calculateScore();
-    if (typeof result === 'number') {
+    if (!quiz || !quiz.modules[0]) {
       return (
         <div className="container max-w-2xl mx-auto py-8 space-y-8">
           <div className="text-center space-y-4">
             <h2 className="text-3xl font-bold">Error</h2>
-            <p className="text-xl">Failed to calculate quiz results.</p>
+            <p className="text-xl">Quiz data is incomplete.</p>
           </div>
         </div>
       );
     }
 
+    const module = quiz.modules[0];
+    const questions = module.questions;
+    
+    // Create properly structured PDF data
     const pdfData = {
       userName: userName || 'User',
-      courseName: result.courseName || 'Quiz Results',
-      modules: result.modules || [],
+      courseName: quiz.courseName || 'Quiz Results',
+      modules: quiz.modules,
       results: {
-        [result.moduleId]: {
-          moduleId: result.moduleId,
-          totalQuestions: result.totalQuestions,
-          correctAnswers: result.correctAnswers,
-          incorrectAnswers: result.incorrectAnswers,
-          questionsWithAnswers: result.questionsWithAnswers.map(qa => ({
+        [module.id]: {
+          moduleId: module.id,
+          totalQuestions: questions.length,
+          correctAnswers: answers.filter((answer, index) => 
+            answer === questions[index].correctOptionId
+          ).length,
+          incorrectAnswers: questions.length - answers.filter((answer, index) => 
+            answer === questions[index].correctOptionId
+          ).length,
+          questionsWithAnswers: questions.map((question, index) => ({
             question: {
-              text: qa.question.text,
+              text: question.text,
               correctOptionId: 'correct',
-              options: qa.question.options.map((opt, i) => ({
-                id: opt.id === qa.question.correctOptionId ? 'correct' : `wrong${i}`,
-                text: opt.text
+              options: question.options.map((option, i) => ({
+                id: option.id === question.correctOptionId ? 'correct' : `wrong${i}`,
+                text: option.text
               }))
             },
-            selectedOptionId: qa.isTimeout ? 'timeout' :
-              qa.selectedOptionId === qa.question.correctOptionId ? 'correct' :
-              `wrong${qa.question.options.findIndex(opt => opt.id === qa.selectedOptionId)}`,
-            isCorrect: qa.isCorrect,
-            isTimeout: qa.isTimeout
+            selectedOptionId: answers[index] === question.correctOptionId ? 'correct' :
+              answers[index] === 'timeout' ? 'timeout' :
+              `wrong${question.options.findIndex(opt => opt.id === answers[index])}`,
+            isCorrect: answers[index] === question.correctOptionId
           }))
         }
       }
