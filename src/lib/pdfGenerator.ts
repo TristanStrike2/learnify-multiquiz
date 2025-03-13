@@ -223,11 +223,20 @@ export function generatePDF(params: PDFGeneratorParams): string {
 
     // Add detailed question results
     result.questionsWithAnswers.forEach((qa, index) => {
+      // Ensure question text is a string and handle objects
+      const questionText = typeof qa.question.text === 'object' 
+        ? JSON.stringify(qa.question.text) 
+        : String(qa.question.text || 'Question text unavailable');
+      
       // Calculate question block height
-      const questionLines = doc.splitTextToSize(qa.question.text, contentWidth - 90);
+      const questionLines = doc.splitTextToSize(questionText, contentWidth - 90);
       let totalOptionsHeight = 0;
       qa.question.options.forEach(option => {
-        const optionLines = doc.splitTextToSize(option.text, contentWidth - 100);
+        // Ensure option text is a string and handle objects
+        const optionText = typeof option.text === 'object'
+          ? JSON.stringify(option.text)
+          : String(option.text || 'Option text unavailable');
+        const optionLines = doc.splitTextToSize(optionText, contentWidth - 100);
         totalOptionsHeight += optionLines.length * lineHeight.small;
       });
       const questionBlockHeight = (questionLines.length * lineHeight.normal) + totalOptionsHeight + lineHeight.normal + 20;
@@ -247,6 +256,9 @@ export function generatePDF(params: PDFGeneratorParams): string {
 
       // Show all options
       qa.question.options.forEach((option) => {
+        // Ensure option text is a string
+        const optionText = String(option.text || 'Option text unavailable');
+        
         const isSelected = option.id === qa.selectedOptionId;
         const isCorrect = option.id === qa.question.correctOptionId;
         const isTimedOut = qa.selectedOptionId === 'timeout';
@@ -260,16 +272,17 @@ export function generatePDF(params: PDFGeneratorParams): string {
         const textX = margin + OPTION_INDENT;
 
         // Draw the appropriate symbol and set text color
-        if (isTimedOut && isCorrect) {
-          // Show timeout indicator for correct answer when timed out
-          drawSymbol('TIMEOUT', symbolX, symbolY, COLORS.TIMEOUT);
-          doc.setTextColor(COLORS.TIMEOUT[0], COLORS.TIMEOUT[1], COLORS.TIMEOUT[2]);
-        } else if (isTimedOut) {
-          // Show unselected for other options when timed out
-          drawSymbol('CIRCLE', symbolX, symbolY, COLORS.UNSELECTED);
-          doc.setTextColor(COLORS.UNSELECTED[0], COLORS.UNSELECTED[1], COLORS.UNSELECTED[2]);
+        if (isTimedOut) {
+          // Show timeout indicator for correct answer
+          if (isCorrect) {
+            drawSymbol('CIRCLE', symbolX, symbolY, COLORS.CORRECT);
+            doc.setTextColor(COLORS.CORRECT[0], COLORS.CORRECT[1], COLORS.CORRECT[2]);
+          } else {
+            drawSymbol('CIRCLE', symbolX, symbolY, COLORS.UNSELECTED);
+            doc.setTextColor(COLORS.UNSELECTED[0], COLORS.UNSELECTED[1], COLORS.UNSELECTED[2]);
+          }
         } else if (isSelected) {
-          // Normal selected answer handling
+          // Show selected answer (correct or incorrect)
           drawSymbol(isCorrect ? 'CORRECT' : 'INCORRECT', symbolX, symbolY, 
             isCorrect ? COLORS.CORRECT : COLORS.INCORRECT);
           doc.setTextColor(
@@ -277,19 +290,18 @@ export function generatePDF(params: PDFGeneratorParams): string {
             isCorrect ? COLORS.CORRECT[1] : COLORS.INCORRECT[1],
             isCorrect ? COLORS.CORRECT[2] : COLORS.INCORRECT[2]
           );
+        } else if (isCorrect) {
+          // Show unselected correct answer
+          drawSymbol('CIRCLE', symbolX, symbolY, COLORS.CORRECT);
+          doc.setTextColor(COLORS.CORRECT[0], COLORS.CORRECT[1], COLORS.CORRECT[2]);
         } else {
-          // Normal unselected option handling
-          drawSymbol('CIRCLE', symbolX, symbolY, 
-            isCorrect ? COLORS.CORRECT : COLORS.UNSELECTED);
-          doc.setTextColor(
-            isCorrect ? COLORS.CORRECT[0] : COLORS.UNSELECTED[0],
-            isCorrect ? COLORS.CORRECT[1] : COLORS.UNSELECTED[1],
-            isCorrect ? COLORS.CORRECT[2] : COLORS.UNSELECTED[2]
-          );
+          // Show unselected incorrect answer
+          drawSymbol('CIRCLE', symbolX, symbolY, COLORS.UNSELECTED);
+          doc.setTextColor(COLORS.UNSELECTED[0], COLORS.UNSELECTED[1], COLORS.UNSELECTED[2]);
         }
 
         // Add the option text
-        const optionLines = doc.splitTextToSize(option.text, contentWidth - 100);
+        const optionLines = doc.splitTextToSize(optionText, contentWidth - 100);
         doc.text(optionLines, textX, yPos);
         
         yPos += Math.max((optionLines.length * lineHeight.small), lineHeight.normal);

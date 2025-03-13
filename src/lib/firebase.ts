@@ -182,6 +182,19 @@ export const submitQuizResults = async (
       throw new Error('Quiz not found');
     }
 
+    // Get the module results (we only have one module for now)
+    const moduleResult = Object.values(results)[0];
+    if (!moduleResult) {
+      throw new Error('No module results found');
+    }
+
+    // Log the incoming data for debugging
+    console.log('Submitting quiz results:', {
+      quizId,
+      userName,
+      moduleResult
+    });
+
     // Structure the results data properly
     const submissionData = {
       userName,
@@ -189,9 +202,37 @@ export const submitQuizResults = async (
       results: {
         courseName: quiz.courseName,
         modules: quiz.modules,
-        ...Object.values(results)[0], // Since we only have one module for now
+        moduleId: moduleResult.moduleId,
+        totalQuestions: moduleResult.totalQuestions,
+        correctAnswers: moduleResult.correctAnswers,
+        incorrectAnswers: moduleResult.incorrectAnswers,
+        questionsWithAnswers: moduleResult.questionsWithAnswers.map((qa: any) => {
+          // Log the question data for debugging
+          console.log('Processing question for submission:', {
+            questionText: qa.question.text,
+            correctOptionId: qa.question.correctOptionId,
+            selectedOptionId: qa.selectedOptionId,
+            numOptions: qa.question.options?.length
+          });
+          
+          return {
+            question: {
+              text: qa.question.text,
+              correctOptionId: qa.question.correctOptionId,
+              options: qa.question.options.map((opt: any) => ({
+                id: opt.id,
+                text: opt.text
+              }))
+            },
+            selectedOptionId: qa.selectedOptionId,
+            isCorrect: qa.isCorrect
+          };
+        })
       }
     };
+
+    // Log the final submission data for debugging
+    console.log('Final submission data:', submissionData);
 
     const submissionRef = ref(database!, `submissions/${quizId}/${Date.now()}_${userName}`);
     await set(submissionRef, submissionData);
