@@ -53,7 +53,7 @@ const generateCourseFromText = async (text: string): Promise<Module[]> => {
     });
     
     console.log('Request body:', requestBody);
-    const apiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`;
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
     console.log('API URL (without key):', apiUrl.replace(GEMINI_API_KEY, '*****'));
     
     const response = await fetch(apiUrl, {
