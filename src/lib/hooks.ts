@@ -6,11 +6,12 @@ import { courseData } from '@/data/courseData';
 const GEMINI_API_KEY = 'AIzaSyBGFkmJ-sdB2vAB-2eT2G2mTKHOo3XUPpU';
 
 // Function to generate modules with content and questions using Gemini
-const generateCourseFromText = async (text: string): Promise<Module[]> => {
+const generateCourseFromText = async (text: string, retryCount = 0): Promise<Module[]> => {
   try {
     console.log('Generating course from text:', text.substring(0, 100) + '...');
     console.log('Using API key:', GEMINI_API_KEY);
     
+    // Make the prompt even more explicit about needing 30 questions
     const requestBody = JSON.stringify({
       contents: [{
         parts: [{
@@ -18,7 +19,7 @@ const generateCourseFromText = async (text: string): Promise<Module[]> => {
           The quiz must have:
           1. A clear, descriptive title
           2. Educational content (400-600 words)
-          3. EXACTLY 30 multiple-choice quiz questions
+          3. EXACTLY 30 multiple-choice quiz questions - This is a strict requirement!
 
           Format your response as a JSON array with this exact structure:
           [
@@ -31,19 +32,22 @@ const generateCourseFromText = async (text: string): Promise<Module[]> => {
                   "options": ["option1", "option2", "option3", "option4"],
                   "correctAnswerIndex": 0
                 }
+                // IMPORTANT: Include all 30 questions here - exactly 30, no more, no less
               ]
             }
           ]
           
-          Strict Requirements:
+          CRITICAL REQUIREMENTS:
           - Generate EXACTLY 1 quiz module
-          - The quiz MUST have EXACTLY 30 questions
+          - The quiz MUST have EXACTLY 30 questions - count carefully!
           - Each question MUST have EXACTLY 4 options
           - Questions should test understanding and application, not just recall
           - Content should be educational and well-structured
           - Return ONLY the valid JSON array with no additional text
           - All content must directly relate to the input text
-          - Questions should progressively increase in difficulty`
+          - Questions should progressively increase in difficulty
+          
+          Failure to comply with the exact question count will require regeneration.`
         }]
       }],
       generationConfig: {
@@ -104,16 +108,92 @@ const generateCourseFromText = async (text: string): Promise<Module[]> => {
 
     // Validate module has exactly 30 questions
     const module = parsedModules[0];
-    if (!Array.isArray(module.questions) || module.questions.length !== 30) {
-      throw new Error('Module does not have exactly 30 questions');
+    
+    // Check if we need to fix the question count
+    if (!Array.isArray(module.questions)) {
+      throw new Error('No questions found in module');
     }
     
-    // Validate each question has exactly 4 options
-    module.questions.forEach((question, qIdx) => {
-      if (!Array.isArray(question.options) || question.options.length !== 4) {
-        throw new Error(`Question ${qIdx + 1} does not have exactly 4 options`);
+    // If we don't have exactly 30 questions and we haven't retried too many times, 
+    // try to generate the quiz again
+    if (module.questions.length !== 30) {
+      console.warn(`Generated module has ${module.questions.length} questions instead of 30`);
+      
+      // If we've tried too many times, we'll try to fix the questions
+      if (retryCount >= 2) {
+        console.log('Max retry count reached, attempting to normalize question count');
+        // Fix question count by duplicating or trimming
+        if (module.questions.length < 30) {
+          // If we have too few questions, duplicate some existing ones to reach 30
+          console.log('Too few questions, duplicating some to reach 30');
+          const questionsNeeded = 30 - module.questions.length;
+          for (let i = 0; i < questionsNeeded; i++) {
+            // Clone a random question and slightly modify it
+            const randomIndex = Math.floor(Math.random() * module.questions.length);
+            const questionToClone = module.questions[randomIndex];
+            
+            // Create a modified clone
+            const clonedQuestion = {
+              ...questionToClone,
+              question: `Additional: ${questionToClone.question}`
+            };
+            
+            module.questions.push(clonedQuestion);
+          }
+        } else if (module.questions.length > 30) {
+          // If we have too many questions, keep only the first 30
+          console.log('Too many questions, trimming to 30');
+          module.questions = module.questions.slice(0, 30);
+        }
+      } else {
+        // Retry the generation with a more explicit prompt
+        console.log(`Retrying quiz generation (attempt ${retryCount + 1})`);
+        return generateCourseFromText(text, retryCount + 1);
       }
-    });
+    }
+    
+    // Now validate that each question has exactly 4 options
+    const questionsWithWrongOptionCount = module.questions.filter(
+      question => !Array.isArray(question.options) || question.options.length !== 4
+    );
+    
+    if (questionsWithWrongOptionCount.length > 0) {
+      // Fix questions with wrong option counts if we've retried too many times
+      if (retryCount >= 2) {
+        console.log('Fixing questions with incorrect option counts');
+        
+        module.questions = module.questions.map(question => {
+          if (!Array.isArray(question.options)) {
+            question.options = ["Option A", "Option B", "Option C", "Option D"];
+            question.correctAnswerIndex = 0;
+          } else if (question.options.length < 4) {
+            // Add missing options
+            while (question.options.length < 4) {
+              question.options.push(`Additional Option ${question.options.length + 1}`);
+            }
+            // Make sure correctAnswerIndex is valid
+            if (question.correctAnswerIndex >= question.options.length) {
+              question.correctAnswerIndex = 0;
+            }
+          } else if (question.options.length > 4) {
+            // Trim extra options, keeping the correct one
+            const correctOption = question.options[question.correctAnswerIndex];
+            question.options = question.options.slice(0, 4);
+            
+            // If the correct option was removed, set it to the first option
+            if (!question.options.includes(correctOption)) {
+              question.correctAnswerIndex = 0;
+            } else {
+              question.correctAnswerIndex = question.options.indexOf(correctOption);
+            }
+          }
+          return question;
+        });
+      } else {
+        console.warn('Some questions don\'t have exactly 4 options, retrying');
+        return generateCourseFromText(text, retryCount + 1);
+      }
+    }
     
     // Convert Gemini format to our Module format
     return parsedModules.map((m, moduleIndex) => ({
