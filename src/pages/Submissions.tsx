@@ -168,50 +168,39 @@ export function SubmissionsPage() {
         throw new Error('Submission data is missing or incomplete');
       }
 
-      // Ensure questionsWithAnswers exists and is an array
-      if (!Array.isArray(submission.results.questionsWithAnswers)) {
+      // Ensure we have all required fields
+      if (!submission.results.questionsWithAnswers || 
+          !Array.isArray(submission.results.questionsWithAnswers) ||
+          !submission.results.modules ||
+          !Array.isArray(submission.results.modules)) {
         throw new Error('Question data is missing or incomplete');
       }
 
+      // Create properly structured PDF data
       const pdfData = {
         userName: submission.userName || 'Unknown User',
         courseName: submission.results.courseName || 'Quiz Results',
-        modules: submission.results.modules || [],
+        modules: submission.results.modules,
         results: {
-          [submission.results.moduleId || 'module1']: {
-            moduleId: submission.results.moduleId || 'module1',
-            totalQuestions: submission.results.totalQuestions || 0,
-            correctAnswers: submission.results.correctAnswers || 0,
-            incorrectAnswers: (submission.results.totalQuestions || 0) - (submission.results.correctAnswers || 0),
-            questionsWithAnswers: submission.results.questionsWithAnswers.map((qa: any) => {
-              if (!qa || !qa.question) {
-                return {
-                  question: {
-                    text: 'Unknown question',
-                    correctOptionId: 'correct',
-                    options: [{ id: 'correct', text: 'Unknown' }]
-                  },
-                  selectedOptionId: 'unknown',
-                  isCorrect: false
-                };
-              }
-
-              // Create options array with proper structure
-              const options = qa.options?.map((opt: any, i: number) => ({
-                id: opt.id || (opt.isCorrect ? 'correct' : `wrong${i}`),
-                text: opt.text || opt
-              })) || [{ id: 'correct', text: qa.correctAnswer || 'Unknown' }];
-
-              return {
-                question: {
-                  text: qa.question,
-                  correctOptionId: 'correct',
-                  options
-                },
-                selectedOptionId: qa.selectedOptionId || (qa.isCorrect ? 'correct' : 'wrong0'),
-                isCorrect: qa.isCorrect || false
-              };
-            })
+          [submission.results.moduleId]: {
+            moduleId: submission.results.moduleId,
+            totalQuestions: submission.results.totalQuestions,
+            correctAnswers: submission.results.correctAnswers,
+            incorrectAnswers: submission.results.incorrectAnswers,
+            questionsWithAnswers: submission.results.questionsWithAnswers.map(qa => ({
+              question: {
+                text: qa.question.text,
+                correctOptionId: 'correct',
+                options: qa.question.options.map((opt, i) => ({
+                  id: opt.id === qa.question.correctOptionId ? 'correct' : `wrong${i}`,
+                  text: opt.text
+                }))
+              },
+              selectedOptionId: qa.selectedOptionId === qa.question.correctOptionId ? 'correct' :
+                qa.selectedOptionId === 'timeout' ? 'timeout' :
+                `wrong${qa.question.options.findIndex(opt => opt.id === qa.selectedOptionId)}`,
+              isCorrect: qa.isCorrect
+            }))
           }
         }
       };

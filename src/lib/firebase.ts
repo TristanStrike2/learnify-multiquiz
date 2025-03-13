@@ -177,12 +177,24 @@ export const submitQuizResults = async (
 ) => {
   checkDatabase();
   try {
-    const submissionRef = ref(database!, `submissions/${quizId}/${Date.now()}_${userName}`);
-    await set(submissionRef, {
+    const quiz = await getSharedQuiz(quizId);
+    if (!quiz) {
+      throw new Error('Quiz not found');
+    }
+
+    // Structure the results data properly
+    const submissionData = {
       userName,
       timestamp: Date.now(),
-      results,
-    });
+      results: {
+        courseName: quiz.courseName,
+        modules: quiz.modules,
+        ...Object.values(results)[0], // Since we only have one module for now
+      }
+    };
+
+    const submissionRef = ref(database!, `submissions/${quizId}/${Date.now()}_${userName}`);
+    await set(submissionRef, submissionData);
     return true;
   } catch (error) {
     console.error('Error submitting quiz results:', error);
