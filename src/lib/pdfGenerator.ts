@@ -84,6 +84,11 @@ export function generatePDF(params: PDFGeneratorParams): string {
     if (type === 'CORRECT' || type === 'INCORRECT') {
       // For selected answers (correct or incorrect), fill the circle completely
       doc.circle(x, y, symbolSize/2, 'F');
+    } else if (type === 'TIMEOUT') {
+      // For timeout, draw a filled circle with a thicker stroke
+      doc.setLineWidth(1.5);
+      doc.circle(x, y, symbolSize/2, 'FD');
+      doc.setLineWidth(0.5);
     } else {
       // For unselected options, determine line width based on whether it's the correct answer
       const isCorrectUnselected = type === 'CIRCLE' && color === COLORS.CORRECT;
@@ -251,15 +256,10 @@ export function generatePDF(params: PDFGeneratorParams): string {
         const textX = margin + OPTION_INDENT;
 
         // Draw the appropriate symbol based on the answer state
-        if (isTimedOut) {
+        if (isTimedOut && isCorrect) {
           // If the question timed out, show timeout indicator for the correct answer
-          if (isCorrect) {
-            drawSymbol('TIMEOUT', symbolX, symbolY, COLORS.TIMEOUT);
-            doc.setTextColor(COLORS.TIMEOUT[0], COLORS.TIMEOUT[1], COLORS.TIMEOUT[2]);
-          } else {
-            drawSymbol('CIRCLE', symbolX, symbolY, COLORS.UNSELECTED);
-            resetTextStyle();
-          }
+          drawSymbol('TIMEOUT', symbolX, symbolY, COLORS.TIMEOUT);
+          doc.setTextColor(COLORS.TIMEOUT[0], COLORS.TIMEOUT[1], COLORS.TIMEOUT[2]);
         } else if (isSelected) {
           // If an answer was selected, show correct/incorrect
           drawSymbol(isCorrect ? 'CORRECT' : 'INCORRECT', symbolX, symbolY, 
@@ -273,15 +273,16 @@ export function generatePDF(params: PDFGeneratorParams): string {
           // For unselected options
           drawSymbol('CIRCLE', symbolX, symbolY, 
             isCorrect ? COLORS.CORRECT : COLORS.UNSELECTED);
-          resetTextStyle();
+          doc.setTextColor(
+            isCorrect ? COLORS.CORRECT[0] : COLORS.UNSELECTED[0],
+            isCorrect ? COLORS.CORRECT[1] : COLORS.UNSELECTED[1],
+            isCorrect ? COLORS.CORRECT[2] : COLORS.UNSELECTED[2]
+          );
         }
 
         // Add the option text
         const optionLines = doc.splitTextToSize(option.text, contentWidth - 100);
         doc.text(optionLines, textX, yPos);
-        
-        // Reset text color
-        resetTextStyle();
         
         yPos += Math.max((optionLines.length * lineHeight.small), lineHeight.normal);
       });
