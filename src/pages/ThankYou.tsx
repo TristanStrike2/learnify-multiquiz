@@ -41,6 +41,9 @@ export function ThankYouPage() {
       if (!quizData.results || !quizData.results.questionsWithAnswers) {
         throw new Error('Quiz results data is incomplete');
       }
+
+      // Log the raw quiz data for debugging
+      console.log('Raw quiz data:', quizData.results);
       
       const pdfData = {
         userName,
@@ -66,26 +69,61 @@ export function ThankYouPage() {
                     };
                   }
 
-                  // Create options array with proper structure
-                  const options = qa.options?.map((opt: any, i: number) => ({
-                    id: opt.id || (opt.isCorrect ? 'correct' : `wrong${i}`),
-                    text: opt.text || opt
-                  })) || [{ id: 'correct', text: qa.correctAnswer || 'Unknown' }];
+                  // Parse question text if it's a JSON string
+                  let questionText = qa.question.text;
+                  try {
+                    if (typeof questionText === 'string' && questionText.startsWith('{')) {
+                      const parsed = JSON.parse(questionText);
+                      questionText = parsed.text || questionText;
+                    }
+                  } catch (e) {
+                    console.log('Error parsing question text:', e);
+                    questionText = String(questionText || 'Question text unavailable');
+                  }
+
+                  // Parse and format options
+                  const options = qa.question.options.map((opt: any) => {
+                    let optionText = opt.text;
+                    try {
+                      if (typeof optionText === 'string' && optionText.startsWith('{')) {
+                        const parsed = JSON.parse(optionText);
+                        optionText = parsed.text || optionText;
+                      }
+                    } catch (e) {
+                      console.log('Error parsing option text:', e);
+                      optionText = String(optionText || 'Option text unavailable');
+                    }
+                    return {
+                      id: opt.id,
+                      text: optionText
+                    };
+                  });
+
+                  // Log the processed question data
+                  console.log('Processed question:', {
+                    text: questionText,
+                    options: options,
+                    correctOptionId: qa.question.correctOptionId,
+                    selectedOptionId: qa.selectedOptionId
+                  });
 
                   return {
                     question: {
-                      text: qa.question,
-                      correctOptionId: 'correct',
-                      options
+                      text: questionText,
+                      correctOptionId: qa.question.correctOptionId,
+                      options: options
                     },
-                    selectedOptionId: qa.selectedOptionId || (qa.isCorrect ? 'correct' : 'wrong0'),
-                    isCorrect: qa.isCorrect || false
+                    selectedOptionId: qa.selectedOptionId,
+                    isCorrect: qa.isCorrect
                   };
                 })
               : []
           }
         }
       };
+
+      // Log the final PDF data structure
+      console.log('Final PDF data structure:', pdfData);
 
       const result = await generatePDF(pdfData);
       
