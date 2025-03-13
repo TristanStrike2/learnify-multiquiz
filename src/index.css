@@ -1,0 +1,140 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --font-sans: 'Poppins', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83.2% 53.3%;
+
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 0 0% 15%;
+    --foreground: 0 0% 100%;
+    
+    --card: 0 0% 20%;
+    --card-foreground: 0 0% 100%;
+    
+    --popover: 0 0% 20%;
+    --popover-foreground: 0 0% 100%;
+    
+    --primary: 0 0% 100%;
+    --primary-foreground: 0 0% 15%;
+    
+    --secondary: 0 0% 25%;
+    --secondary-foreground: 0 0% 100%;
+    
+    --muted: 0 0% 25%;
+    --muted-foreground: 0 0% 70%;
+    
+    --accent: 0 0% 25%;
+    --accent-foreground: 0 0% 100%;
+    
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 100%;
+    
+    --border: 0 0% 30%;
+    --input: 0 0% 25%;
+    --ring: 0 0% 100%;
+  }
+
+  * {
+    @apply border-border font-sans;
+    transition-property: transform, opacity, background-color, border-color;
+    transition-duration: 0.2s;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+  
+  ::selection {
+    @apply bg-primary/20;
+  }
+}
+
+@layer components {
+  .text-balance {
+    text-wrap: balance;
+  }
+  
+  .glass-panel {
+    @apply bg-white/80 backdrop-blur-md border border-white/20 shadow-md;
+  }
+
+  .option-card {
+    @apply rounded-lg p-4 border border-border hover:border-primary/50 bg-card transition-all duration-200 cursor-pointer relative;
+  }
+  
+  .option-card-selected {
+    @apply bg-primary/10 dark:bg-primary/20 border-primary ring-2 ring-primary/20 dark:ring-primary/30;
+  }
+
+  .option-card-correct {
+    @apply bg-green-50 dark:bg-green-950/30 border-green-300 dark:border-green-800 ring-2 ring-green-500/20;
+  }
+  
+  .option-card-incorrect {
+    @apply bg-red-50 dark:bg-red-950/30 border-red-300 dark:border-red-800 ring-2 ring-red-500/20;
+  }
+
+  .option-card-unanswered {
+    @apply bg-yellow-50 dark:bg-yellow-950/30 border-yellow-300 dark:border-yellow-800 ring-2 ring-yellow-500/20;
+  }
+
+  .option-card:hover:not(.option-card-correct, .option-card-incorrect, .option-card-unanswered) {
+    @apply transform scale-[1.02] shadow-lg;
+  }
+
+  .option-card::after {
+    @apply absolute right-4 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded-full opacity-0 transition-opacity duration-200;
+    content: '';
+  }
+
+  .option-card-correct::after {
+    @apply opacity-100 bg-green-500 text-white;
+    content: '✓';
+  }
+
+  .option-card-incorrect::after {
+    @apply opacity-100 bg-red-500 text-white;
+    content: '×';
+  }
+
+  .option-card-unanswered::after {
+    @apply opacity-100 bg-yellow-500 text-white;
+    content: '!';
+  }
+}
