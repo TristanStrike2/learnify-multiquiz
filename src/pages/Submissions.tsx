@@ -118,11 +118,19 @@ export function SubmissionsPage() {
             questionsWithAnswers: submission.results.questionsWithAnswers.map((qa: any) => ({
               question: {
                 text: qa.question,
-                correctOptionId: qa.correctOptionId,
-                options: qa.options
+                correctOptionId: qa.correctOptionId || 'correct',
+                options: qa.options || qa.allOptions.map((text: string, i: number) => ({
+                  id: text === qa.correctAnswer ? 'correct' : `wrong${i}`,
+                  text: text
+                }))
               },
-              selectedOptionId: qa.selectedOptionId,
-              isCorrect: qa.isCorrect
+              selectedOptionId: qa.selectedOptionId || (
+                qa.selectedAnswer === 'timeout' ? 'timeout' :
+                qa.selectedAnswer === qa.correctAnswer ? 'correct' :
+                `wrong${qa.allOptions.indexOf(qa.selectedAnswer)}`
+              ),
+              isCorrect: qa.isCorrect,
+              isTimeout: qa.selectedAnswer === 'timeout'
             }))
           }
         }
@@ -136,6 +144,7 @@ export function SubmissionsPage() {
         description: `Results for ${submission.userName} have been downloaded successfully.`,
       });
     } catch (error) {
+      console.error('Error generating PDF:', error);
       toast({
         title: 'Error',
         description: 'Failed to generate PDF. Please try again.',

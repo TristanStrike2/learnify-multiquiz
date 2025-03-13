@@ -1,23 +1,95 @@
+// Add type declaration at the top of the file
+declare global {
+  interface Window {
+    _firebaseInitError?: Error;
+  }
+}
+
 import { initializeApp } from 'firebase/app';
 import { getAnalytics } from 'firebase/analytics';
 import { getDatabase, ref, set, onValue, off, get } from 'firebase/database';
 
-// Your web app's Firebase configuration
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
+// Debug function to safely log environment variables
+const debugEnvVariables = () => {
+  console.log('Environment Mode:', import.meta.env.MODE);
+  console.log('Base URL:', import.meta.env.BASE_URL);
+  console.log('Available env variables:', Object.keys(import.meta.env).filter(key => key.startsWith('VITE_')));
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
-const database = getDatabase(app);
+// Validate environment variables
+const validateEnvVariables = () => {
+  debugEnvVariables();
+
+  const config = {
+    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+    databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL,
+    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+    appId: import.meta.env.VITE_FIREBASE_APP_ID,
+    measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
+  };
+
+  // Check each configuration value
+  const missing = Object.entries(config)
+    .filter(([key, value]) => !value)
+    .map(([key]) => key);
+
+  if (missing.length > 0) {
+    console.error('Missing Firebase configuration values:', missing);
+    console.error('Current config (sanitized):', {
+      ...config,
+      apiKey: config.apiKey ? '***' : undefined,
+      appId: config.appId ? '***' : undefined
+    });
+    throw new Error(`Missing Firebase configuration values: ${missing.join(', ')}`);
+  }
+
+  return config;
+};
+
+let app;
+let analytics;
+let database;
+
+try {
+  console.log('Initializing Firebase...');
+  const firebaseConfig = validateEnvVariables();
+  
+  app = initializeApp(firebaseConfig);
+  console.log('Firebase app initialized successfully');
+  
+  try {
+    analytics = getAnalytics(app);
+    console.log('Analytics initialized successfully');
+  } catch (analyticsError) {
+    console.warn('Analytics initialization failed:', analyticsError);
+    // Continue without analytics
+  }
+
+  try {
+    database = getDatabase(app);
+    console.log('Database initialized successfully');
+  } catch (dbError) {
+    console.error('Database initialization failed:', dbError);
+    throw dbError;
+  }
+} catch (error) {
+  console.error('Firebase initialization failed:', error);
+  // Instead of throwing, we'll set a global flag
+  window._firebaseInitError = error;
+  // Create dummy implementations to prevent crashes
+  database = null;
+}
+
+// Modify all database operations to check for initialization
+const checkDatabase = () => {
+  if (!database) {
+    const error = window._firebaseInitError || new Error('Firebase not initialized');
+    throw error;
+  }
+};
 
 // Store quiz data
 export const storeQuizData = async (
@@ -25,8 +97,9 @@ export const storeQuizData = async (
   courseName: string,
   modules: any[]
 ) => {
+  checkDatabase();
   try {
-    const quizRef = ref(database, `quizzes/${quizId}`);
+    const quizRef = ref(database!, `quizzes/${quizId}`);
     await set(quizRef, {
       courseName,
       modules,
@@ -41,8 +114,9 @@ export const storeQuizData = async (
 
 // Get shared quiz
 export const getSharedQuiz = async (quizId: string) => {
+  checkDatabase();
   try {
-    const quizRef = ref(database, `quizzes/${quizId}`);
+    const quizRef = ref(database!, `quizzes/${quizId}`);
     const snapshot = await get(quizRef);
     return snapshot.val();
   } catch (error) {
@@ -57,9 +131,10 @@ export const storeQuizSubmission = async (
   userName: string,
   results: any
 ) => {
+  checkDatabase();
   try {
     const quiz = await getSharedQuiz(quizId);
-    const submissionRef = ref(database, `submissions/${quizId}/${Date.now()}_${userName}`);
+    const submissionRef = ref(database!, `submissions/${quizId}/${Date.now()}_${userName}`);
     await set(submissionRef, {
       userName,
       timestamp: Date.now(),
@@ -81,7 +156,8 @@ export const subscribeToQuizSubmissions = (
   quizId: string,
   callback: (submissions: any[]) => void
 ) => {
-  const submissionsRef = ref(database, `submissions/${quizId}`);
+  checkDatabase();
+  const submissionsRef = ref(database!, `submissions/${quizId}`);
   
   onValue(submissionsRef, (snapshot) => {
     const data = snapshot.val();
@@ -99,8 +175,9 @@ export const submitQuizResults = async (
   userName: string,
   results: Record<string, any>
 ) => {
+  checkDatabase();
   try {
-    const submissionRef = ref(database, `submissions/${quizId}/${Date.now()}_${userName}`);
+    const submissionRef = ref(database!, `submissions/${quizId}/${Date.now()}_${userName}`);
     await set(submissionRef, {
       userName,
       timestamp: Date.now(),
