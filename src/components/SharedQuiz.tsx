@@ -152,23 +152,17 @@ export function SharedQuiz() {
         questionText: question.text,
         correctOptionId: question.correctOptionId,
         selectedAnswer,
-        isCorrect
+        isCorrect,
+        numOptions: question.options.length
       });
-
-      // Extract the actual question text
-      const questionText = typeof question === 'object' && question.text 
-        ? question.text 
-        : String(question || 'Question text unavailable');
 
       return {
         question: {
-          text: questionText,
+          text: question.text,
           correctOptionId: question.correctOptionId,
           options: question.options.map(option => ({
             id: option.id,
-            text: typeof option === 'object' && option.text 
-              ? option.text 
-              : String(option || 'Option text unavailable')
+            text: option.text
           }))
         },
         selectedOptionId: selectedAnswer,
@@ -304,34 +298,21 @@ export function SharedQuiz() {
           correctAnswers: result.correctAnswers,
           incorrectAnswers: result.incorrectAnswers,
           questionsWithAnswers: result.questionsWithAnswers.map(qa => {
-            // Log the question data for debugging
+            // Log each question's data for debugging
             console.log('Processing question for PDF:', {
               questionText: qa.question.text,
               correctOptionId: qa.question.correctOptionId,
               selectedOptionId: qa.selectedOptionId,
-              isCorrect: qa.isCorrect,
-              isTimeout: qa.isTimeout,
-              options: qa.question.options
+              numOptions: qa.question.options.length
             });
-
-            // Extract the actual question text
-            const questionText = typeof qa.question.text === 'string'
-              ? qa.question.text
-              : typeof qa.question.text === 'object' && qa.question.text.text
-              ? qa.question.text.text
-              : String(qa.question.text || 'Question text unavailable');
-
+            
             return {
               question: {
-                text: questionText,
+                text: qa.question.text,
                 correctOptionId: qa.question.correctOptionId,
                 options: qa.question.options.map(opt => ({
                   id: opt.id,
-                  text: typeof opt.text === 'string'
-                    ? opt.text
-                    : typeof opt.text === 'object' && opt.text.text
-                    ? opt.text.text
-                    : String(opt.text || 'Option text unavailable')
+                  text: opt.text
                 }))
               },
               selectedOptionId: qa.selectedOptionId,
@@ -343,8 +324,8 @@ export function SharedQuiz() {
       }
     };
 
-    // Log the final PDF data for debugging
-    console.log('Final PDF data:', pdfData);
+    // Log the final PDF data structure
+    console.log('Final PDF data structure:', pdfData);
 
     return (
       <div className="container max-w-2xl mx-auto py-8 space-y-8">
@@ -354,7 +335,22 @@ export function SharedQuiz() {
           <Button 
             onClick={() => {
               try {
-                generatePDF(pdfData);
+                const result = generatePDF(pdfData);
+                
+                // If result is a data URL (fallback for some browsers), create a download link
+                if (result !== 'success') {
+                  const link = document.createElement('a');
+                  link.href = result;
+                  link.download = `${userName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_quiz_results.pdf`;
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                }
+                
+                toast({
+                  title: 'PDF Generated',
+                  description: 'Your results have been downloaded successfully.',
+                });
               } catch (error) {
                 console.error('Error generating PDF:', error);
                 toast({
