@@ -287,8 +287,9 @@ export function SharedQuiz() {
       );
     }
 
+    // Create properly structured PDF data
     const pdfData = {
-      userName: userName || 'User',
+      userName: userName || 'Unknown User',
       courseName: result.courseName || 'Quiz Results',
       modules: result.modules || [],
       results: {
@@ -307,10 +308,16 @@ export function SharedQuiz() {
             });
             
             return {
-              question: qa.question,
+              question: {
+                text: qa.question.text,
+                correctOptionId: qa.question.correctOptionId,
+                options: qa.question.options.map(opt => ({
+                  id: opt.id,
+                  text: opt.text
+                }))
+              },
               selectedOptionId: qa.selectedOptionId,
-              isCorrect: qa.isCorrect,
-              isTimeout: qa.isTimeout
+              isCorrect: qa.isCorrect
             };
           })
         }
@@ -326,9 +333,9 @@ export function SharedQuiz() {
           <h2 className="text-3xl font-bold">Thank You for Completing the Quiz!</h2>
           <p className="text-xl">Your results have been submitted successfully.</p>
           <Button 
-            onClick={() => {
+            onClick={async () => {
               try {
-                const result = generatePDF(pdfData);
+                const result = await generatePDF(pdfData);
                 
                 // If result is a data URL (fallback for some browsers), create a download link
                 if (result !== 'success') {
