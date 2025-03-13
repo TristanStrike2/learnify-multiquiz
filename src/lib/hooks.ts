@@ -39,9 +39,9 @@ const generateCourseFromText = async (text: string, retryCount = 0): Promise<Mod
           
           CRITICAL REQUIREMENTS:
           - Generate EXACTLY 1 quiz module
-          - The quiz MUST have EXACTLY 30 questions - count carefully!
-          - Each question MUST have EXACTLY 4 options
-          - Questions should test understanding and application, not just recall
+          - The quiz MUST have EXACTLY 30 questions - count carefully! This is a very strict requirement!
+          - Each question MUST have EXACTLY 4 options - This is a very strict requirement!
+          - Questions should test evaluation, anlysis, application and understading. Use Bloom's Taxonomy to ensure the questions are appropriate. 
           - Content should be educational and well-structured
           - Return ONLY the valid JSON array with no additional text
           - All content must directly relate to the input text
@@ -200,15 +200,35 @@ const generateCourseFromText = async (text: string, retryCount = 0): Promise<Mod
       id: `module${moduleIndex + 1}`,
       title: m.title,
       content: m.content,
-      questions: m.questions.map((q, questionIndex) => ({
-        id: `q${questionIndex + 1}`,
-        text: q.question,
-        options: q.options.map((opt, i) => ({
-          id: String.fromCharCode(65 + i), // A, B, C, D
-          text: opt
-        })),
-        correctOptionId: String.fromCharCode(65 + q.correctAnswerIndex) // A, B, C, D
-      }))
+      questions: m.questions.map((q, questionIndex) => {
+        // Create array of all options
+        const allOptions = [...q.options];
+        const correctOption = allOptions[q.correctAnswerIndex];
+        
+        // Remove the correct option from the array
+        allOptions.splice(q.correctAnswerIndex, 1);
+        
+        // Shuffle the remaining options
+        for (let i = allOptions.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [allOptions[i], allOptions[j]] = [allOptions[j], allOptions[i]];
+        }
+        
+        // Insert the correct option at a random position
+        const randomPosition = Math.floor(Math.random() * 4);
+        allOptions.splice(randomPosition, 0, correctOption);
+        
+        // Create the question object with randomized options
+        return {
+          id: `q${questionIndex + 1}`,
+          text: q.question,
+          options: allOptions.map((opt, i) => ({
+            id: String.fromCharCode(65 + i), // A, B, C, D
+            text: opt
+          })),
+          correctOptionId: String.fromCharCode(65 + randomPosition) // A, B, C, D based on where we inserted the correct option
+        };
+      })
     }));
   } catch (error) {
     console.error('Error generating course:', error);
