@@ -321,8 +321,18 @@ export function generatePDF(params: PDFGeneratorParams): string {
   const motivationalText = 'Keep learning and growing!';
   doc.text(motivationalText, pageWidth / 2, footerYPos + 20, { align: 'center' });
 
-  // Return data URL
-  return doc.output('dataurlstring');
+  // Instead of returning a data URL, save the PDF with a filename
+  const filename = `${userName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_quiz_results.pdf`;
+  
+  // For mobile compatibility, use the save method with filename
+  try {
+    doc.save(filename);
+    return 'success';
+  } catch (error) {
+    console.error('Error saving PDF:', error);
+    // Fallback to data URL for browsers that don't support direct save
+    return doc.output('dataurlstring');
+  }
 }
 
 export interface SubmissionReportParams {

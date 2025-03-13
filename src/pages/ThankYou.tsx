@@ -77,8 +77,17 @@ export function ThankYouPage() {
         }
       };
 
-      const pdfUrl = await generatePDF(pdfData);
-      window.open(pdfUrl, '_blank');
+      const result = await generatePDF(pdfData);
+      
+      // If result is a data URL (fallback for some browsers), create a download link
+      if (result !== 'success') {
+        const link = document.createElement('a');
+        link.href = result;
+        link.download = `${userName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_quiz_results.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
       
       toast({
         title: 'PDF Generated',
