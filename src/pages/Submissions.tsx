@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { generateSubmissionReport, generatePDF } from '@/lib/pdfGenerator';
-import { Download, Share2, Copy, CheckCircle2, FileText, User, Calendar, Trophy } from 'lucide-react';
+import { Download, Share2, Copy, CheckCircle2, FileText, User, Calendar, Trophy, PlusCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { useToast } from '@/components/ui/use-toast';
 import { Progress } from '@/components/ui/progress';
@@ -179,19 +179,28 @@ export function SubmissionsPage() {
             Monitor quiz submissions and performance
           </p>
         </div>
-        <div className="flex gap-4">
+        <div className="flex flex-col sm:flex-row gap-4">
           <Button 
-            onClick={handleDownloadPDF} 
-            disabled={!submissions.length}
-            className="bg-purple-600 hover:bg-purple-700"
+            onClick={() => navigate('/')}
+            className="bg-green-600 hover:bg-green-700"
           >
-            <Download className="mr-2 h-4 w-4" />
-            Download Report
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Create New Quiz
           </Button>
-          <Button onClick={handleShare} variant="outline" className="border-purple-200">
-            <Share2 className="mr-2 h-4 w-4" />
-            Share Quiz
-          </Button>
+          <div className="flex gap-4">
+            <Button 
+              onClick={handleDownloadPDF} 
+              disabled={!submissions.length}
+              className="bg-purple-600 hover:bg-purple-700"
+            >
+              <Download className="mr-2 h-4 w-4" />
+              Download Report
+            </Button>
+            <Button onClick={handleShare} variant="outline" className="border-purple-200">
+              <Share2 className="mr-2 h-4 w-4" />
+              Share Quiz
+            </Button>
+          </div>
         </div>
       </div>
 
