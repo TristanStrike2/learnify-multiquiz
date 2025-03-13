@@ -57,7 +57,11 @@ export function ThankYouPage() {
             incorrectAnswers: (quizData.results.totalQuestions || 0) - (quizData.results.correctAnswers || 0),
             questionsWithAnswers: Array.isArray(quizData.results.questionsWithAnswers) 
               ? quizData.results.questionsWithAnswers.map((qa: any) => {
-                  if (!qa || !qa.question) {
+                  // Log the raw question data
+                  console.log('Raw question data:', qa);
+
+                  if (!qa) {
+                    console.log('Question data is null or undefined');
                     return {
                       question: {
                         text: 'Unknown question',
@@ -69,52 +73,73 @@ export function ThankYouPage() {
                     };
                   }
 
-                  // Parse question text if it's a JSON string
-                  let questionText = qa.question.text;
+                  // Extract question data
+                  const questionData = qa.question || qa;
+                  console.log('Extracted question data:', questionData);
+
+                  // Parse question text
+                  let questionText = '';
                   try {
-                    if (typeof questionText === 'string' && questionText.startsWith('{')) {
-                      const parsed = JSON.parse(questionText);
-                      questionText = parsed.text || questionText;
+                    if (typeof questionData === 'string') {
+                      const parsed = JSON.parse(questionData);
+                      questionText = parsed.text || parsed;
+                    } else if (typeof questionData === 'object') {
+                      questionText = questionData.text || JSON.stringify(questionData);
+                    } else {
+                      questionText = String(questionData);
                     }
                   } catch (e) {
                     console.log('Error parsing question text:', e);
-                    questionText = String(questionText || 'Question text unavailable');
+                    questionText = String(questionData || 'Question text unavailable');
                   }
 
+                  // Get options from the correct location
+                  const rawOptions = (questionData.options || qa.options || []);
+                  console.log('Raw options:', rawOptions);
+
                   // Parse and format options
-                  const options = qa.question.options.map((opt: any) => {
-                    let optionText = opt.text;
+                  const options = rawOptions.map((opt: any) => {
+                    let optionText = '';
                     try {
-                      if (typeof optionText === 'string' && optionText.startsWith('{')) {
-                        const parsed = JSON.parse(optionText);
-                        optionText = parsed.text || optionText;
+                      if (typeof opt === 'string') {
+                        const parsed = JSON.parse(opt);
+                        optionText = parsed.text || parsed;
+                      } else if (typeof opt === 'object') {
+                        optionText = opt.text || JSON.stringify(opt);
+                      } else {
+                        optionText = String(opt);
                       }
                     } catch (e) {
-                      console.log('Error parsing option text:', e);
-                      optionText = String(optionText || 'Option text unavailable');
+                      console.log('Error parsing option:', e);
+                      optionText = String(opt || 'Option text unavailable');
                     }
                     return {
-                      id: opt.id,
+                      id: opt.id || 'unknown',
                       text: optionText
                     };
                   });
+
+                  // Get the correct option ID
+                  const correctOptionId = questionData.correctOptionId || qa.correctOptionId || 'unknown';
+                  const selectedOptionId = qa.selectedOptionId || 'unknown';
+                  const isCorrect = qa.isCorrect || false;
 
                   // Log the processed question data
                   console.log('Processed question:', {
                     text: questionText,
                     options: options,
-                    correctOptionId: qa.question.correctOptionId,
-                    selectedOptionId: qa.selectedOptionId
+                    correctOptionId: correctOptionId,
+                    selectedOptionId: selectedOptionId
                   });
 
                   return {
                     question: {
                       text: questionText,
-                      correctOptionId: qa.question.correctOptionId,
+                      correctOptionId: correctOptionId,
                       options: options
                     },
-                    selectedOptionId: qa.selectedOptionId,
-                    isCorrect: qa.isCorrect
+                    selectedOptionId: selectedOptionId,
+                    isCorrect: isCorrect
                   };
                 })
               : []
