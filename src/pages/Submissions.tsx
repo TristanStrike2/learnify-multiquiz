@@ -16,11 +16,37 @@ interface QuizSubmission {
   timestamp: number;
   results: {
     courseName: string;
-    modules: any[];
-    moduleId?: string;
+    modules: Array<{
+      id: string;
+      title: string;
+      content: string;
+      questions: Array<{
+        id: string;
+        text: string;
+        options: Array<{
+          id: string;
+          text: string;
+        }>;
+        correctOptionId: string;
+      }>;
+    }>;
+    moduleId: string;
     totalQuestions: number;
     correctAnswers: number;
-    questionsWithAnswers: any[];
+    incorrectAnswers: number;
+    questionsWithAnswers: Array<{
+      question: {
+        text: string;
+        correctOptionId: string;
+        options: Array<{
+          id: string;
+          text: string;
+        }>;
+      };
+      selectedOptionId: string;
+      isCorrect: boolean;
+      isTimeout: boolean;
+    }>;
   };
 }
 

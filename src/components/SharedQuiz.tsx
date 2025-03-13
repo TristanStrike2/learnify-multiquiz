@@ -136,20 +136,43 @@ export function SharedQuiz() {
   };
 
   const calculateScore = () => {
-    if (!quiz) return 0;
-    const correctAnswers = answers.filter((answer, index) => 
-      answer === quiz.modules[0].questions[index].correctOptionId
-    ).length;
+    if (!quiz || !quiz.modules[0] || !quiz.modules[0].questions) return 0;
+
+    const module = quiz.modules[0];
+    const questions = module.questions;
+    
+    // Map through all questions to create detailed results
+    const questionsWithAnswers = questions.map((question, index) => {
+      const selectedAnswer = answers[index];
+      const isTimeout = selectedAnswer === 'timeout';
+      const isCorrect = !isTimeout && selectedAnswer === question.correctOptionId;
+
+      return {
+        question: {
+          text: question.text,
+          correctOptionId: question.correctOptionId,
+          options: question.options.map(option => ({
+            id: option.id,
+            text: option.text
+          }))
+        },
+        selectedOptionId: selectedAnswer,
+        isCorrect: isCorrect,
+        isTimeout: isTimeout
+      };
+    });
+
+    const correctAnswers = questionsWithAnswers.filter(qa => qa.isCorrect).length;
+    const totalQuestions = questions.length;
+
     return {
-      totalQuestions: quiz.modules[0].questions.length,
-      correctAnswers,
-      incorrectAnswers: quiz.modules[0].questions.length - correctAnswers,
-      questionsWithAnswers: quiz.modules[0].questions.map((q, i) => ({
-        question: q,
-        selectedOptionId: answers[i],
-        isCorrect: answers[i] === q.correctOptionId
-      })),
-      moduleId: quiz.modules[0].id
+      moduleId: module.id,
+      courseName: quiz.courseName || 'Quiz Results',
+      totalQuestions: totalQuestions,
+      correctAnswers: correctAnswers,
+      incorrectAnswers: totalQuestions - correctAnswers,
+      questionsWithAnswers: questionsWithAnswers,
+      modules: quiz.modules
     };
   };
 
@@ -234,8 +257,8 @@ export function SharedQuiz() {
   }
 
   if (quizComplete) {
-    const scoreResult = calculateScore();
-    if (typeof scoreResult === 'number') {
+    const result = calculateScore();
+    if (typeof result === 'number') {
       return (
         <div className="container max-w-2xl mx-auto py-8 space-y-8">
           <div className="text-center space-y-4">
@@ -246,45 +269,32 @@ export function SharedQuiz() {
       );
     }
 
-    const result = scoreResult;
-    const pdfResults = {
-      moduleId: quiz.modules[0].id || 'module1',
-      totalQuestions: quiz.modules[0].questions.length,
-      correctAnswers: result.correctAnswers,
-      incorrectAnswers: result.totalQuestions - result.correctAnswers,
-      questionsWithAnswers: quiz.modules[0].questions.map((q, idx) => {
-        // Ensure question has necessary fields
-        const questionText = q.text || 'Unknown question';
-        const options = Array.isArray(q.options) ? q.options : [];
-        const selectedOptionId = answers[idx] || '';
-        const correctOptionId = q.correctOptionId || '';
-        const isCorrect = selectedOptionId === correctOptionId;
-        
-        return {
-          question: {
-            text: questionText,
-            correctOptionId: 'correct',
-            options: options.map((opt, i) => ({
-              id: opt.id === correctOptionId ? 'correct' : `wrong${i}`,
-              text: opt.text || 'Unknown option'
-            }))
-          },
-          selectedOptionId: selectedOptionId === 'timeout' ? 'timeout' :
-            selectedOptionId === correctOptionId ? 'correct' :
-            `wrong${options.findIndex(opt => opt.id === selectedOptionId)}`,
-          isCorrect: isCorrect,
-          isTimeout: selectedOptionId === 'timeout'
-        };
-      })
-    };
-
-    // Create PDF data with proper structure
     const pdfData = {
       userName: userName || 'User',
-      courseName: quiz.courseName || 'Quiz Results',
-      modules: quiz.modules || [],
-      results: { 
-        module1: pdfResults 
+      courseName: result.courseName || 'Quiz Results',
+      modules: result.modules || [],
+      results: {
+        [result.moduleId]: {
+          moduleId: result.moduleId,
+          totalQuestions: result.totalQuestions,
+          correctAnswers: result.correctAnswers,
+          incorrectAnswers: result.incorrectAnswers,
+          questionsWithAnswers: result.questionsWithAnswers.map(qa => ({
+            question: {
+              text: qa.question.text,
+              correctOptionId: 'correct',
+              options: qa.question.options.map((opt, i) => ({
+                id: opt.id === qa.question.correctOptionId ? 'correct' : `wrong${i}`,
+                text: opt.text
+              }))
+            },
+            selectedOptionId: qa.isTimeout ? 'timeout' :
+              qa.selectedOptionId === qa.question.correctOptionId ? 'correct' :
+              `wrong${qa.question.options.findIndex(opt => opt.id === qa.selectedOptionId)}`,
+            isCorrect: qa.isCorrect,
+            isTimeout: qa.isTimeout
+          }))
+        }
       }
     };
 
