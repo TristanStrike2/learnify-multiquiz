@@ -155,8 +155,10 @@ export function SharedQuiz() {
         isCorrect
       });
 
-      // Ensure question text is a string
-      const questionText = String(question.text || 'Question text unavailable');
+      // Extract the actual question text
+      const questionText = typeof question === 'object' && question.text 
+        ? question.text 
+        : String(question || 'Question text unavailable');
 
       return {
         question: {
@@ -164,7 +166,9 @@ export function SharedQuiz() {
           correctOptionId: question.correctOptionId,
           options: question.options.map(option => ({
             id: option.id,
-            text: String(option.text || 'Option text unavailable')
+            text: typeof option === 'object' && option.text 
+              ? option.text 
+              : String(option || 'Option text unavailable')
           }))
         },
         selectedOptionId: selectedAnswer,
@@ -310,26 +314,25 @@ export function SharedQuiz() {
               options: qa.question.options
             });
 
-            // Ensure question text is a string and not an object
-            const questionText = typeof qa.question.text === 'object' 
-              ? JSON.stringify(qa.question.text) 
+            // Extract the actual question text
+            const questionText = typeof qa.question.text === 'string'
+              ? qa.question.text
+              : typeof qa.question.text === 'object' && qa.question.text.text
+              ? qa.question.text.text
               : String(qa.question.text || 'Question text unavailable');
 
             return {
               question: {
                 text: questionText,
                 correctOptionId: qa.question.correctOptionId,
-                options: qa.question.options.map(opt => {
-                  // Ensure option text is a string and not an object
-                  const optionText = typeof opt.text === 'object'
-                    ? JSON.stringify(opt.text)
-                    : String(opt.text || 'Option text unavailable');
-                  
-                  return {
-                    id: opt.id,
-                    text: optionText
-                  };
-                })
+                options: qa.question.options.map(opt => ({
+                  id: opt.id,
+                  text: typeof opt.text === 'string'
+                    ? opt.text
+                    : typeof opt.text === 'object' && opt.text.text
+                    ? opt.text.text
+                    : String(opt.text || 'Option text unavailable')
+                }))
               },
               selectedOptionId: qa.selectedOptionId,
               isCorrect: qa.isCorrect,
