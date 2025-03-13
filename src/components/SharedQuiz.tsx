@@ -7,7 +7,6 @@ import { useToast } from '@/components/ui/use-toast';
 import QuizQuestion from './QuizQuestion';
 import { Progress } from '@/components/ui/progress';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import ModuleContent from './ModuleContent';
 import { Download } from 'lucide-react';
 import { generatePDF } from '@/lib/pdfGenerator';
 
@@ -18,6 +17,7 @@ export function SharedQuiz() {
   const [quiz, setQuiz] = useState<any>(null);
   const [userName, setUserName] = useState('');
   const [showContent, setShowContent] = useState(false);
+  const [showQuestions, setShowQuestions] = useState(false);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -56,7 +56,7 @@ export function SharedQuiz() {
     loadQuiz();
   }, [quizId, navigate, toast]);
 
-  const handleStartQuiz = (e: React.FormEvent) => {
+  const handleNameSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!userName.trim()) {
       toast({
@@ -93,6 +93,7 @@ export function SharedQuiz() {
     setAnswers(new Array(30).fill(''));
     setCurrentQuestionIndex(0);
     setShowContent(false);
+    setShowQuestions(true);
   };
 
   const handleSelectOption = (optionId: string) => {
@@ -164,7 +165,7 @@ export function SharedQuiz() {
     return null;
   }
 
-  if (!userName && !showContent) {
+  if (!userName || (!showContent && !showQuestions)) {
     return (
       <div className="container max-w-xl mx-auto py-12">
         <Card className="shadow-lg">
@@ -180,7 +181,7 @@ export function SharedQuiz() {
                 This quiz contains 30 multiple-choice questions to test your knowledge.
               </p>
             </div>
-            <form onSubmit={handleStartQuiz} className="space-y-4">
+            <form onSubmit={handleNameSubmit} className="space-y-4">
               <Input
                 type="text"
                 placeholder="Enter your name"
@@ -188,9 +189,10 @@ export function SharedQuiz() {
                 onChange={(e) => setUserName(e.target.value)}
                 className="text-lg py-6"
                 required
+                autoFocus
               />
               <Button type="submit" className="w-full py-6 text-lg">
-                Continue
+                Access Quiz
               </Button>
             </form>
           </CardContent>
@@ -199,7 +201,7 @@ export function SharedQuiz() {
     );
   }
 
-  if (showContent) {
+  if (showContent && !showQuestions) {
     return (
       <div className="container max-w-2xl mx-auto py-8">
         <Card className="shadow-lg">
