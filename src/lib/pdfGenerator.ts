@@ -167,6 +167,7 @@ export function generatePDF(params: PDFGeneratorParams): string {
   }> = [
     { symbol: 'CORRECT', text: 'Correct answer selected', color: COLORS.CORRECT },
     { symbol: 'INCORRECT', text: 'Incorrect answer selected', color: COLORS.INCORRECT },
+    { symbol: 'TIMEOUT', text: 'Question timed out', color: COLORS.TIMEOUT },
     { symbol: 'CIRCLE', text: 'Correct answer (not selected)', color: COLORS.CORRECT },
     { symbol: 'CIRCLE', text: 'Unselected option', color: COLORS.UNSELECTED }
   ];
@@ -248,48 +249,51 @@ export function generatePDF(params: PDFGeneratorParams): string {
         const symbolX = circleX;
         const symbolY = yPos - 4;
         const textX = margin + OPTION_INDENT;
-        
-        // Determine the symbol and color to use
-        let symbolType: keyof typeof SYMBOLS;
-        let symbolColor: [number, number, number];
 
+        // Draw the appropriate symbol based on the answer state
         if (isTimedOut) {
+          // If the question timed out, show timeout indicator for the correct answer
           if (isCorrect) {
-            symbolType = 'CIRCLE';
-            symbolColor = COLORS.CORRECT;
+            drawSymbol('TIMEOUT', symbolX, symbolY, COLORS.TIMEOUT);
+            doc.setTextColor(COLORS.TIMEOUT[0], COLORS.TIMEOUT[1], COLORS.TIMEOUT[2]);
           } else {
-            symbolType = 'CIRCLE';
-            symbolColor = COLORS.UNSELECTED;
+            drawSymbol('CIRCLE', symbolX, symbolY, COLORS.UNSELECTED);
+            resetTextStyle();
           }
-        } else if (isSelected && isCorrect) {
-          symbolType = 'CORRECT';
-          symbolColor = COLORS.CORRECT;
-        } else if (isSelected && !isCorrect) {
-          symbolType = 'INCORRECT';
-          symbolColor = COLORS.INCORRECT;
-        } else if (isCorrect) {
-          symbolType = 'CIRCLE';
-          symbolColor = COLORS.CORRECT;
+        } else if (isSelected) {
+          // If an answer was selected, show correct/incorrect
+          drawSymbol(isCorrect ? 'CORRECT' : 'INCORRECT', symbolX, symbolY, 
+            isCorrect ? COLORS.CORRECT : COLORS.INCORRECT);
+          doc.setTextColor(
+            isCorrect ? COLORS.CORRECT[0] : COLORS.INCORRECT[0],
+            isCorrect ? COLORS.CORRECT[1] : COLORS.INCORRECT[1],
+            isCorrect ? COLORS.CORRECT[2] : COLORS.INCORRECT[2]
+          );
         } else {
-          symbolType = 'CIRCLE';
-          symbolColor = COLORS.UNSELECTED;
+          // For unselected options
+          drawSymbol('CIRCLE', symbolX, symbolY, 
+            isCorrect ? COLORS.CORRECT : COLORS.UNSELECTED);
+          resetTextStyle();
         }
-        
-        drawSymbol(symbolType, symbolX, symbolY, symbolColor);
 
-        doc.setFontSize(12);
-        doc.setTextColor(symbolType !== 'CIRCLE' ? 0 : 71, 85, 105);
-        const optionLines = doc.splitTextToSize(option.text, contentWidth - OPTION_INDENT - margin);
+        // Add the option text
+        const optionLines = doc.splitTextToSize(option.text, contentWidth - 100);
         doc.text(optionLines, textX, yPos);
         
-        if (isTimedOut && option.id === qa.question.correctOptionId) {
-          const timeoutText = ' (Timed Out)';
-          doc.setTextColor(COLORS.TIMEOUT[0], COLORS.TIMEOUT[1], COLORS.TIMEOUT[2]);
-          doc.text(timeoutText, textX + doc.getTextWidth(optionLines[0]) + 5, yPos);
-        }
+        // Reset text color
+        resetTextStyle();
         
         yPos += Math.max((optionLines.length * lineHeight.small), lineHeight.normal);
       });
+
+      // Add timeout message if the question timed out
+      if (qa.selectedOptionId === 'timeout') {
+        doc.setTextColor(COLORS.TIMEOUT[0], COLORS.TIMEOUT[1], COLORS.TIMEOUT[2]);
+        doc.setFont('helvetica', 'italic');
+        doc.text('This question timed out - no answer was submitted', margin + OPTION_INDENT, yPos);
+        resetTextStyle();
+        yPos += lineHeight.normal;
+      }
 
       yPos += lineHeight.normal + 10; // Add more space between questions
     });
