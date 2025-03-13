@@ -36,25 +36,22 @@ export default function QuizQuestion({
   const [showQuestion, setShowQuestion] = useState(true);
   const [timerKey, setTimerKey] = useState(0);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [randomizedOptions, setRandomizedOptions] = useState(question.options);
   const isLastQuestion = questionNumber === totalQuestions;
 
-  // Randomize options when the question changes
-  const randomizedOptions = useMemo(() => {
+  // Randomize options only when question changes
+  useEffect(() => {
     const shuffled = [...question.options];
     for (let i = shuffled.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
     }
-    return shuffled;
-  }, [question.options]);
-
-  // Reset states when question changes
-  useEffect(() => {
+    setRandomizedOptions(shuffled);
     setIsTimedOut(false);
     setShowQuestion(true);
     setTimerKey(prev => prev + 1);
     setIsSubmitted(false);
-  }, [questionNumber]);
+  }, [questionNumber, question.options]);
 
   const handleTimeout = () => {
     setIsTimedOut(true);
