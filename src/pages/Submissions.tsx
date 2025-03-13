@@ -163,11 +163,12 @@ export function SubmissionsPage() {
 
   const handleDownloadUserPDF = async (submission: QuizSubmission) => {
     try {
-      // First check if we have all the required data
       if (!submission || !submission.results) {
-        throw new Error('Submission data is missing or incomplete');
+        throw new Error('No submission data available');
       }
 
+      console.log('Raw submission data:', JSON.stringify(submission, null, 2));
+      
       // Ensure we have all required fields
       if (!submission.results.questionsWithAnswers || 
           !Array.isArray(submission.results.questionsWithAnswers) ||
@@ -175,6 +176,9 @@ export function SubmissionsPage() {
           !Array.isArray(submission.results.modules)) {
         throw new Error('Question data is missing or incomplete');
       }
+
+      // Debug log
+      console.log('Questions with answers:', JSON.stringify(submission.results.questionsWithAnswers, null, 2));
 
       // Create properly structured PDF data
       const pdfData = {
@@ -187,23 +191,51 @@ export function SubmissionsPage() {
             totalQuestions: submission.results.totalQuestions,
             correctAnswers: submission.results.correctAnswers,
             incorrectAnswers: submission.results.incorrectAnswers,
-            questionsWithAnswers: submission.results.questionsWithAnswers.map(qa => ({
-              question: {
-                text: qa.question.text,
-                correctOptionId: 'correct',
-                options: qa.question.options.map((opt, i) => ({
-                  id: opt.id === qa.question.correctOptionId ? 'correct' : `wrong${i}`,
+            questionsWithAnswers: submission.results.questionsWithAnswers.map(qa => {
+              // Ensure we have all required data
+              if (!qa.question || !qa.question.options || !Array.isArray(qa.question.options)) {
+                console.error('Invalid question data:', qa);
+                return {
+                  question: {
+                    text: 'Invalid question data',
+                    correctOptionId: 'correct',
+                    options: [{ id: 'correct', text: 'No options available' }]
+                  },
+                  selectedOptionId: 'unknown',
+                  isCorrect: false
+                };
+              }
+
+              // Map the options to the correct format
+              const options = qa.question.options.map((opt, i) => {
+                const isCorrect = opt.id === qa.question.correctOptionId;
+                return {
+                  id: isCorrect ? 'correct' : `wrong${i}`,
                   text: opt.text
-                }))
-              },
-              selectedOptionId: qa.selectedOptionId === qa.question.correctOptionId ? 'correct' :
-                qa.selectedOptionId === 'timeout' ? 'timeout' :
-                `wrong${qa.question.options.findIndex(opt => opt.id === qa.selectedOptionId)}`,
-              isCorrect: qa.isCorrect
-            }))
+                };
+              });
+
+              // Find the index of the selected option
+              const selectedIndex = qa.question.options.findIndex(opt => opt.id === qa.selectedOptionId);
+
+              return {
+                question: {
+                  text: qa.question.text,
+                  correctOptionId: 'correct',
+                  options
+                },
+                selectedOptionId: qa.selectedOptionId === qa.question.correctOptionId ? 'correct' :
+                  qa.selectedOptionId === 'timeout' ? 'timeout' :
+                  selectedIndex !== -1 ? `wrong${selectedIndex}` : 'unknown',
+                isCorrect: qa.isCorrect
+              };
+            })
           }
         }
       };
+
+      // Debug log final PDF data
+      console.log('Final PDF data:', JSON.stringify(pdfData, null, 2));
       
       const result = await generatePDF(pdfData);
       
