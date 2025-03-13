@@ -4,7 +4,7 @@ import { Question } from '@/types/quiz';
 import { Timer } from '@/components/Timer';
 import { CheckCircle2, XCircle, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 
 export interface QuizQuestionProps {
   question: {
@@ -37,6 +37,16 @@ export default function QuizQuestion({
   const [timerKey, setTimerKey] = useState(0);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const isLastQuestion = questionNumber === totalQuestions;
+
+  // Randomize options when the question changes
+  const randomizedOptions = useMemo(() => {
+    const shuffled = [...question.options];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  }, [question.options]);
 
   // Reset states when question changes
   useEffect(() => {
@@ -128,13 +138,12 @@ export default function QuizQuestion({
         <div className="text-sm text-muted-foreground">
           Question {questionNumber} of {totalQuestions}
         </div>
-        {showQuestion && !isSubmitted && (
-          <Timer 
-            duration={45} 
-            onTimeout={handleTimeout}
-            resetKey={timerKey}
-          />
-        )}
+        <Timer 
+          duration={45} 
+          onTimeout={handleTimeout}
+          resetKey={timerKey}
+          isPaused={isSubmitted}
+        />
       </div>
 
       <Card className="p-6">
@@ -143,7 +152,7 @@ export default function QuizQuestion({
         </h2>
         <div className="space-y-4">
           <div className="grid gap-4">
-            {question.options.map((option) => (
+            {randomizedOptions.map((option) => (
               <button
                 key={option.id}
                 onClick={() => handleOptionClick(option.id)}
@@ -168,23 +177,26 @@ export default function QuizQuestion({
         </div>
       </Card>
 
-      {isSubmitted && (
+      <div className="flex items-start gap-4 pt-4">
         <div className={cn(
-          "p-4 rounded-lg text-center font-medium",
-          isTimedOut 
-            ? "bg-orange-100 dark:bg-orange-900/20 text-orange-700 dark:text-orange-300"
-            : selectedOptionId === question.correctOptionId
-              ? "bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-300"
-              : "bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-300"
+          "flex-1 transition-all duration-200",
+          isSubmitted ? "opacity-100" : "opacity-0 invisible"
         )}>
-          <div className="flex items-center justify-center gap-2">
-            {isTimedOut && <Clock className="h-5 w-5" />}
-            <span>{getFeedbackMessage()}</span>
+          <div className={cn(
+            "p-4 rounded-lg text-center font-medium",
+            isTimedOut 
+              ? "bg-orange-100 dark:bg-orange-900/20 text-orange-700 dark:text-orange-300"
+              : selectedOptionId === question.correctOptionId
+                ? "bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-300"
+                : "bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-300"
+          )}>
+            <div className="flex items-center justify-center gap-2">
+              {isTimedOut && <Clock className="h-5 w-5" />}
+              <span>{getFeedbackMessage()}</span>
+            </div>
           </div>
         </div>
-      )}
 
-      <div className="flex justify-end gap-4 pt-4">
         {!isSubmitted ? (
           <Button
             onClick={handleSubmit}
