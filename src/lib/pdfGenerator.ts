@@ -223,19 +223,33 @@ export function generatePDF(params: PDFGeneratorParams): string {
 
     // Add detailed question results
     result.questionsWithAnswers.forEach((qa, index) => {
-      // Ensure question text is a string and handle objects
-      const questionText = typeof qa.question.text === 'object' 
-        ? JSON.stringify(qa.question.text) 
-        : String(qa.question.text || 'Question text unavailable');
-      
+      // Parse question text if it's a JSON string
+      let questionText = qa.question.text;
+      try {
+        if (typeof questionText === 'string' && questionText.startsWith('{')) {
+          const parsed = JSON.parse(questionText);
+          questionText = parsed.text || questionText;
+        }
+      } catch (e) {
+        console.error('Error parsing question text:', e);
+        questionText = String(questionText || 'Question text unavailable');
+      }
+
       // Calculate question block height
       const questionLines = doc.splitTextToSize(questionText, contentWidth - 90);
       let totalOptionsHeight = 0;
       qa.question.options.forEach(option => {
-        // Ensure option text is a string and handle objects
-        const optionText = typeof option.text === 'object'
-          ? JSON.stringify(option.text)
-          : String(option.text || 'Option text unavailable');
+        // Parse option text if it's a JSON string
+        let optionText = option.text;
+        try {
+          if (typeof optionText === 'string' && optionText.startsWith('{')) {
+            const parsed = JSON.parse(optionText);
+            optionText = parsed.text || optionText;
+          }
+        } catch (e) {
+          console.error('Error parsing option text:', e);
+          optionText = String(optionText || 'Option text unavailable');
+        }
         const optionLines = doc.splitTextToSize(optionText, contentWidth - 100);
         totalOptionsHeight += optionLines.length * lineHeight.small;
       });
