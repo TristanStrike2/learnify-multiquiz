@@ -129,11 +129,13 @@ const generateCourseFromText = async (text: string): Promise<Module[]> => {
 
 export const useQuiz = () => {
   const [quizState, setQuizState] = useState<QuizState>({ status: 'input' });
-  const [apiKey, setApiKey] = useState<string | null>(localStorage.getItem('gemini_api_key'));
+  // Always use the hardcoded API key
+  const [apiKey, setApiKey] = useState<string | null>(GEMINI_API_KEY);
   const { toast } = useToast();
   
   const saveApiKey = useCallback((key: string) => {
-    localStorage.setItem('gemini_api_key', key);
+    // No need to use localStorage anymore
+    // localStorage.setItem('gemini_api_key', key);
     setApiKey(key);
     toast({
       title: "API Key Saved",
@@ -143,16 +145,16 @@ export const useQuiz = () => {
   
   const startQuizGeneration = useCallback(async (text: string) => {
     try {
-      // Check if API key is available
-      const apiKey = localStorage.getItem('gemini_api_key');
-      if (!apiKey) {
-        toast({
-          title: "API Key Required",
-          description: "Please enter your Gemini API key in settings",
-          variant: "destructive"
-        });
-        return;
-      }
+      // Always use the hardcoded API key instead of checking localStorage
+      // const apiKey = localStorage.getItem('gemini_api_key');
+      // if (!apiKey) {
+      //   toast({
+      //     title: "API Key Required",
+      //     description: "Please enter your Gemini API key in settings",
+      //     variant: "destructive"
+      //   });
+      //   return;
+      // }
       
       setQuizState({ status: 'generating' });
       const modules = await generateCourseFromText(text);
