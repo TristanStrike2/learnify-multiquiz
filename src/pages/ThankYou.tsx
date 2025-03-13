@@ -47,50 +47,39 @@ export function ThankYouPage() {
         courseName: quizData.results.courseName || 'Quiz Results',
         modules: quizData.results.modules || [],
         results: {
-          module1: {
-            moduleId: 'module1',
+          [quizData.results.moduleId || 'module1']: {
+            moduleId: quizData.results.moduleId || 'module1',
             totalQuestions: quizData.results.totalQuestions || 0,
             correctAnswers: quizData.results.correctAnswers || 0,
             incorrectAnswers: (quizData.results.totalQuestions || 0) - (quizData.results.correctAnswers || 0),
             questionsWithAnswers: Array.isArray(quizData.results.questionsWithAnswers) 
               ? quizData.results.questionsWithAnswers.map((qa: any) => {
-                  // Determine if this question was timed out
-                  const isTimeout = qa.selectedAnswer === 'timeout';
-                  
-                  // Check if allOptions exists
-                  if (!Array.isArray(qa.allOptions)) {
+                  if (!qa || !qa.question) {
                     return {
                       question: {
-                        text: qa.question || 'Unknown question',
+                        text: 'Unknown question',
                         correctOptionId: 'correct',
-                        options: [{ id: 'correct', text: qa.correctAnswer || 'Unknown' }]
+                        options: [{ id: 'correct', text: 'Unknown' }]
                       },
-                      selectedOptionId: isTimeout ? 'timeout' : 'unknown',
-                      isCorrect: qa.isCorrect || false,
-                      isTimeout: isTimeout
+                      selectedOptionId: 'unknown',
+                      isCorrect: false
                     };
                   }
-                  
-                  // Create the options array with proper IDs and correct answer marking
-                  const options = qa.allOptions.map((text: string, i: number) => {
-                    const isCorrectOption = text === qa.correctAnswer;
-                    return {
-                      id: isCorrectOption ? 'correct' : `wrong${i}`,
-                      text: text
-                    };
-                  });
+
+                  // Create options array with proper structure
+                  const options = qa.options?.map((opt: any, i: number) => ({
+                    id: opt.id || (opt.isCorrect ? 'correct' : `wrong${i}`),
+                    text: opt.text || opt
+                  })) || [{ id: 'correct', text: qa.correctAnswer || 'Unknown' }];
 
                   return {
                     question: {
-                      text: qa.question || 'Unknown question',
-                      correctOptionId: 'correct', // The correct option always has ID 'correct'
-                      options: options
+                      text: qa.question,
+                      correctOptionId: 'correct',
+                      options
                     },
-                    selectedOptionId: isTimeout ? 'timeout' : 
-                      (qa.selectedAnswer === qa.correctAnswer ? 'correct' : 
-                        `wrong${qa.allOptions.indexOf(qa.selectedAnswer)}`),
-                    isCorrect: qa.isCorrect || false,
-                    isTimeout: isTimeout
+                    selectedOptionId: qa.selectedOptionId || (qa.isCorrect ? 'correct' : 'wrong0'),
+                    isCorrect: qa.isCorrect || false
                   };
                 })
               : []

@@ -17,6 +17,7 @@ interface QuizSubmission {
   results: {
     courseName: string;
     modules: any[];
+    moduleId?: string;
     totalQuestions: number;
     correctAnswers: number;
     questionsWithAnswers: any[];
@@ -151,73 +152,38 @@ export function SubmissionsPage() {
         courseName: submission.results.courseName || 'Quiz Results',
         modules: submission.results.modules || [],
         results: {
-          module1: {
-            moduleId: 'module1',
+          [submission.results.moduleId || 'module1']: {
+            moduleId: submission.results.moduleId || 'module1',
             totalQuestions: submission.results.totalQuestions || 0,
             correctAnswers: submission.results.correctAnswers || 0,
             incorrectAnswers: (submission.results.totalQuestions || 0) - (submission.results.correctAnswers || 0),
             questionsWithAnswers: submission.results.questionsWithAnswers.map((qa: any) => {
-              // Add thorough null checking for each property
-              if (!qa) {
+              if (!qa || !qa.question) {
                 return {
                   question: {
-                    text: 'Question data missing',
+                    text: 'Unknown question',
                     correctOptionId: 'correct',
                     options: [{ id: 'correct', text: 'Unknown' }]
                   },
                   selectedOptionId: 'unknown',
-                  isCorrect: false,
-                  isTimeout: false
+                  isCorrect: false
                 };
               }
 
-              // Handle the case where qa.options or qa.allOptions might not exist
-              let options;
-              if (Array.isArray(qa.options)) {
-                options = qa.options;
-              } else if (qa.allOptions && Array.isArray(qa.allOptions)) {
-                options = qa.allOptions.map((text: string, i: number) => ({
-                  id: text === qa.correctAnswer ? 'correct' : `wrong${i}`,
-                  text: text
-                }));
-              } else {
-                // Fallback if neither options nor allOptions exists
-                options = [
-                  { id: 'correct', text: qa.correctAnswer || 'Unknown correct answer' },
-                  { id: 'wrong1', text: 'Option B' },
-                  { id: 'wrong2', text: 'Option C' },
-                  { id: 'wrong3', text: 'Option D' }
-                ];
-              }
-
-              // Determine the selected option ID with proper null checking
-              let selectedOptionId;
-              if (qa.selectedOptionId) {
-                selectedOptionId = qa.selectedOptionId;
-              } else if (qa.selectedAnswer) {
-                if (qa.selectedAnswer === 'timeout') {
-                  selectedOptionId = 'timeout';
-                } else if (qa.selectedAnswer === qa.correctAnswer) {
-                  selectedOptionId = 'correct';
-                } else if (qa.allOptions && Array.isArray(qa.allOptions)) {
-                  const index = qa.allOptions.indexOf(qa.selectedAnswer);
-                  selectedOptionId = index !== -1 ? `wrong${index}` : 'unknown';
-                } else {
-                  selectedOptionId = 'unknown';
-                }
-              } else {
-                selectedOptionId = 'unknown';
-              }
+              // Create options array with proper structure
+              const options = qa.options?.map((opt: any, i: number) => ({
+                id: opt.id || (opt.isCorrect ? 'correct' : `wrong${i}`),
+                text: opt.text || opt
+              })) || [{ id: 'correct', text: qa.correctAnswer || 'Unknown' }];
 
               return {
                 question: {
-                  text: qa.question || 'Unknown question',
-                  correctOptionId: qa.correctOptionId || 'correct',
-                  options: options
+                  text: qa.question,
+                  correctOptionId: 'correct',
+                  options
                 },
-                selectedOptionId: selectedOptionId,
-                isCorrect: !!qa.isCorrect,
-                isTimeout: qa.selectedAnswer === 'timeout'
+                selectedOptionId: qa.selectedOptionId || (qa.isCorrect ? 'correct' : 'wrong0'),
+                isCorrect: qa.isCorrect || false
               };
             })
           }
