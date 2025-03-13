@@ -287,11 +287,55 @@ export function SharedQuiz() {
       );
     }
 
+    // First check if we have all the required data
+    if (!result || !result.questionsWithAnswers) {
+      toast({
+        title: 'Error',
+        description: 'Quiz results data is missing or incomplete',
+        variant: 'destructive',
+      });
+      return (
+        <div className="container max-w-2xl mx-auto py-8 space-y-8">
+          <div className="text-center space-y-4">
+            <h2 className="text-3xl font-bold">Error</h2>
+            <p className="text-xl">Failed to generate results. Data is incomplete.</p>
+          </div>
+        </div>
+      );
+    }
+
+    // Ensure we have all required fields
+    if (!Array.isArray(result.questionsWithAnswers) ||
+        !result.modules ||
+        !Array.isArray(result.modules)) {
+      toast({
+        title: 'Error',
+        description: 'Question data is missing or incomplete',
+        variant: 'destructive',
+      });
+      return (
+        <div className="container max-w-2xl mx-auto py-8 space-y-8">
+          <div className="text-center space-y-4">
+            <h2 className="text-3xl font-bold">Error</h2>
+            <p className="text-xl">Failed to generate results. Invalid data format.</p>
+          </div>
+        </div>
+      );
+    }
+
+    // Log the submission data for debugging
+    console.log('Processing submission for PDF:', {
+      userName,
+      courseName: result.courseName,
+      totalQuestions: result.totalQuestions,
+      correctAnswers: result.correctAnswers
+    });
+
     // Create properly structured PDF data
     const pdfData = {
       userName: userName || 'Unknown User',
       courseName: result.courseName || 'Quiz Results',
-      modules: result.modules || [],
+      modules: result.modules,
       results: {
         [result.moduleId]: {
           moduleId: result.moduleId,
