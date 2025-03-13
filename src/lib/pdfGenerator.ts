@@ -81,21 +81,18 @@ export function generatePDF(params: PDFGeneratorParams): string {
     doc.setFillColor(color[0], color[1], color[2]);
     doc.setDrawColor(color[0], color[1], color[2]);
     
-    if (type === 'CORRECT' || type === 'INCORRECT') {
+    if (type === 'TIMEOUT') {
+      // For timeout, draw a hollow circle with thick border
+      doc.setLineWidth(2);
+      doc.circle(x, y, symbolSize/2, 'S');
+      doc.setLineWidth(0.5);
+    } else if (type === 'CORRECT' || type === 'INCORRECT') {
       // For selected answers (correct or incorrect), fill the circle completely
       doc.circle(x, y, symbolSize/2, 'F');
-    } else if (type === 'TIMEOUT') {
-      // For timeout, draw a filled circle with a thicker stroke
-      doc.setLineWidth(1.5);
-      doc.circle(x, y, symbolSize/2, 'FD');
-      doc.setLineWidth(0.5);
     } else {
-      // For unselected options, determine line width based on whether it's the correct answer
-      const isCorrectUnselected = type === 'CIRCLE' && color === COLORS.CORRECT;
-      doc.setLineWidth(isCorrectUnselected ? 1.5 : 0.5);
-      doc.circle(x, y, symbolSize/2, 'S');
-      // Reset line width to default
+      // For unselected options
       doc.setLineWidth(0.5);
+      doc.circle(x, y, symbolSize/2, 'S');
     }
   };
 
@@ -255,13 +252,19 @@ export function generatePDF(params: PDFGeneratorParams): string {
         const symbolY = yPos - 4;
         const textX = margin + OPTION_INDENT;
 
-        // Draw the appropriate symbol based on the answer state
-        if (isTimedOut && isCorrect) {
-          // If the question timed out, show timeout indicator for the correct answer
-          drawSymbol('TIMEOUT', symbolX, symbolY, COLORS.TIMEOUT);
-          doc.setTextColor(COLORS.TIMEOUT[0], COLORS.TIMEOUT[1], COLORS.TIMEOUT[2]);
+        // Draw the appropriate symbol and set text color
+        if (isTimedOut) {
+          if (isCorrect) {
+            // Show timeout indicator for correct answer when timed out
+            drawSymbol('TIMEOUT', symbolX, symbolY, COLORS.TIMEOUT);
+            doc.setTextColor(COLORS.TIMEOUT[0], COLORS.TIMEOUT[1], COLORS.TIMEOUT[2]);
+          } else {
+            // Show unselected for other options when timed out
+            drawSymbol('CIRCLE', symbolX, symbolY, COLORS.UNSELECTED);
+            doc.setTextColor(COLORS.UNSELECTED[0], COLORS.UNSELECTED[1], COLORS.UNSELECTED[2]);
+          }
         } else if (isSelected) {
-          // If an answer was selected, show correct/incorrect
+          // Normal selected answer handling
           drawSymbol(isCorrect ? 'CORRECT' : 'INCORRECT', symbolX, symbolY, 
             isCorrect ? COLORS.CORRECT : COLORS.INCORRECT);
           doc.setTextColor(
@@ -270,7 +273,7 @@ export function generatePDF(params: PDFGeneratorParams): string {
             isCorrect ? COLORS.CORRECT[2] : COLORS.INCORRECT[2]
           );
         } else {
-          // For unselected options
+          // Normal unselected option handling
           drawSymbol('CIRCLE', symbolX, symbolY, 
             isCorrect ? COLORS.CORRECT : COLORS.UNSELECTED);
           doc.setTextColor(
@@ -289,9 +292,10 @@ export function generatePDF(params: PDFGeneratorParams): string {
 
       // Add timeout message if the question timed out
       if (qa.selectedOptionId === 'timeout') {
+        yPos += 5; // Add a small gap before the timeout message
         doc.setTextColor(COLORS.TIMEOUT[0], COLORS.TIMEOUT[1], COLORS.TIMEOUT[2]);
         doc.setFont('helvetica', 'italic');
-        doc.text('This question timed out - no answer was submitted', margin + OPTION_INDENT, yPos);
+        doc.text('⏱ This question timed out - no answer was submitted', margin + OPTION_INDENT, yPos);
         resetTextStyle();
         yPos += lineHeight.normal;
       }
