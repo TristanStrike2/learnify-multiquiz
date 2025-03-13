@@ -19,65 +19,62 @@ export default function ModuleList({
   onViewResults,
   courseName
 }: ModuleListProps) {
+  const module = modules[0]; // We only have one module now
+  const isCompleted = moduleResults[module.id];
+  
   return (
     <div className="space-y-6">
       <div className="text-center">
         <h2 className="text-2xl font-bold">{courseName}</h2>
         <p className="text-muted-foreground mt-2">
-          Select a module to begin
+          Start your quiz when you're ready
         </p>
       </div>
       
       <div className="space-y-4">
-        {modules.map((module, index) => {
-          const isCompleted = moduleResults[module.id];
-          const isActive = index === currentModuleIndex;
-          const canAccess = index <= currentModuleIndex;
-          
-          return (
-            <div
-              key={module.id}
-              className={`
-                p-4 rounded-lg border
-                ${isActive ? 'border-primary' : 'border-border'}
-                ${!canAccess ? 'opacity-50' : ''}
-              `}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  {isCompleted ? (
-                    <CheckCircle2 className="h-5 w-5 text-green-500" />
-                  ) : (
-                    <Circle className="h-5 w-5 text-muted-foreground" />
-                  )}
-                  <h3 className="font-medium">
-                    Module {index + 1}
-                  </h3>
-                </div>
-                
-                <div className="flex gap-2">
-                  {isCompleted && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => onViewResults(module.id)}
-                    >
-                      View Results
-                    </Button>
-                  )}
+        <div className="p-6 rounded-lg border border-primary bg-card">
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {isCompleted ? (
+                  <CheckCircle2 className="h-5 w-5 text-green-500" />
+                ) : (
+                  <Circle className="h-5 w-5 text-muted-foreground" />
+                )}
+                <h3 className="font-medium text-lg">
+                  {module.title}
+                </h3>
+              </div>
+              
+              <div className="flex gap-2">
+                {isCompleted && (
                   <Button
-                    variant={isActive ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => onModuleSelect(index)}
-                    disabled={!canAccess}
+                    variant="outline"
+                    onClick={() => onViewResults(module.id)}
                   >
-                    {isCompleted ? 'Review' : 'Start'}
+                    View Results
                   </Button>
-                </div>
+                )}
+                <Button
+                  variant="default"
+                  onClick={() => onModuleSelect(0)}
+                  className="min-w-[100px]"
+                >
+                  {isCompleted ? 'Review' : 'Start Quiz'}
+                </Button>
               </div>
             </div>
-          );
-        })}
+            
+            <div className="text-muted-foreground">
+              <p>30 multiple-choice questions</p>
+              {isCompleted && (
+                <p className="mt-1">
+                  Score: {Math.round((moduleResults[module.id].correctAnswers / moduleResults[module.id].totalQuestions) * 100)}%
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

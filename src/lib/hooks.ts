@@ -20,16 +20,16 @@ const generateCourseFromText = async (text: string): Promise<Module[]> => {
           {
             role: 'user',
             parts: [{
-              text: `Transform this text into a comprehensive course with 3 modules: "${text}". 
-              Each module must have:
+              text: `Transform this text into a comprehensive quiz: "${text}". 
+              The quiz must have:
               1. A clear, descriptive title
               2. Educational content (400-600 words)
-              3. EXACTLY 15 multiple-choice quiz questions
+              3. EXACTLY 30 multiple-choice quiz questions
 
               Format your response as a JSON array with this exact structure:
               [
                 {
-                  "title": "Module Title",
+                  "title": "Quiz Title",
                   "content": "Educational content that teaches the topic in a clear way...",
                   "questions": [
                     {
@@ -42,14 +42,14 @@ const generateCourseFromText = async (text: string): Promise<Module[]> => {
               ]
               
               Strict Requirements:
-              - Generate EXACTLY 3 modules
-              - Each module MUST have EXACTLY 15 questions
+              - Generate EXACTLY 1 quiz module
+              - The quiz MUST have EXACTLY 30 questions
               - Each question MUST have EXACTLY 4 options
               - Questions should test understanding and application, not just recall
               - Content should be educational and well-structured
               - Return ONLY the valid JSON array with no additional text
               - All content must directly relate to the input text
-              - Questions should progressively increase in difficulty within each module`
+              - Questions should progressively increase in difficulty`
             }]
           }
         ],
@@ -82,20 +82,21 @@ const generateCourseFromText = async (text: string): Promise<Module[]> => {
       const parsedModules = JSON.parse(jsonString) as OpenAIModule[];
       console.log('Parsed modules:', parsedModules);
       
-      if (!Array.isArray(parsedModules) || parsedModules.length !== 3) {
-        throw new Error('Invalid module count - expected exactly 3 modules');
+      if (!Array.isArray(parsedModules) || parsedModules.length !== 1) {
+        throw new Error('Invalid module count - expected exactly 1 module');
       }
 
-      // Validate each module has exactly 15 questions
-      parsedModules.forEach((module, idx) => {
-        if (!Array.isArray(module.questions) || module.questions.length !== 15) {
-          throw new Error(`Module ${idx + 1} does not have exactly 15 questions`);
+      // Validate module has exactly 30 questions
+      const module = parsedModules[0];
+      if (!Array.isArray(module.questions) || module.questions.length !== 30) {
+        throw new Error('Module does not have exactly 30 questions');
+      }
+      
+      // Validate each question has exactly 4 options
+      module.questions.forEach((question, qIdx) => {
+        if (!Array.isArray(question.options) || question.options.length !== 4) {
+          throw new Error(`Question ${qIdx + 1} does not have exactly 4 options`);
         }
-        module.questions.forEach((question, qIdx) => {
-          if (!Array.isArray(question.options) || question.options.length !== 4) {
-            throw new Error(`Question ${qIdx + 1} in module ${idx + 1} does not have exactly 4 options`);
-          }
-        });
       });
       
       // Convert Gemini format to our Module format
@@ -164,11 +165,12 @@ export const useQuiz = () => {
         return;
       }
       
+      // After generating the quiz, we move to the name input state
       setQuizState({ 
         status: 'course', 
         modules,
         currentModuleIndex: 0,
-        currentView: 'content'
+        currentView: 'name' // Start with name input
       });
     } catch (error) {
       console.error('Error generating course:', error);
@@ -179,6 +181,17 @@ export const useQuiz = () => {
       });
       setQuizState({ status: 'input' });
     }
+  }, []);
+
+  const handleNameSubmit = useCallback((name: string) => {
+    setQuizState(prev => {
+      if (prev.status !== 'course') return prev;
+      return {
+        ...prev,
+        userName: name,
+        currentView: 'content' // After name input, show content
+      };
+    });
   }, []);
   
   const startModuleQuiz = useCallback(() => {
@@ -193,7 +206,8 @@ export const useQuiz = () => {
         questions: currentModule.questions,
         answers: Array(currentModule.questions.length).fill(null),
         quizStartTime: Date.now(),
-        moduleId: currentModule.id
+        moduleId: currentModule.id,
+        userName: prevState.userName
       };
     });
   }, []);
@@ -299,7 +313,8 @@ export const useQuiz = () => {
     moveToNextModule,
     resetQuiz,
     apiKey,
-    saveApiKey
+    saveApiKey,
+    handleNameSubmit
   };
 };
 

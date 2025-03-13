@@ -1,12 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getSharedQuiz, storeQuizSubmission } from '@/lib/firebase';
+import { getSharedQuiz, submitQuizResults } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/use-toast';
 import QuizQuestion from './QuizQuestion';
 import { Progress } from '@/components/ui/progress';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import ModuleContent from './ModuleContent';
+import { Download } from 'lucide-react';
+import { generatePDF } from '@/lib/pdfGenerator';
 
 export function SharedQuiz() {
   const { quizId } = useParams();
@@ -14,11 +17,12 @@ export function SharedQuiz() {
   const { toast } = useToast();
   const [quiz, setQuiz] = useState<any>(null);
   const [userName, setUserName] = useState('');
-  const [hasStarted, setHasStarted] = useState(false);
+  const [showContent, setShowContent] = useState(false);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [quizComplete, setQuizComplete] = useState(false);
 
   useEffect(() => {
     async function loadQuiz() {
@@ -62,8 +66,33 @@ export function SharedQuiz() {
       });
       return;
     }
-    setHasStarted(true);
-    setAnswers(new Array(quiz.modules[0].questions.length).fill(''));
+    setShowContent(true);
+  };
+
+  const handleStartQuestions = () => {
+    if (!quiz || !quiz.modules[0] || !quiz.modules[0].questions) {
+      toast({
+        title: 'Error',
+        description: 'Failed to start quiz. Please try again.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Verify we have exactly 30 questions
+    if (quiz.modules[0].questions.length !== 30) {
+      toast({
+        title: 'Error',
+        description: 'Quiz configuration error. Please contact support.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Initialize answers array for all 30 questions
+    setAnswers(new Array(30).fill(''));
+    setCurrentQuestionIndex(0);
+    setShowContent(false);
   };
 
   const handleSelectOption = (optionId: string) => {
@@ -74,65 +103,53 @@ export function SharedQuiz() {
     });
   };
 
+  const handleNextQuestion = () => {
+    if (currentQuestionIndex < quiz.modules[0].questions.length - 1) {
+      setCurrentQuestionIndex(prev => prev + 1);
+    } else {
+      handleQuizComplete();
+    }
+  };
+
+  const handleQuizComplete = async () => {
+    setIsSubmitting(true);
+    try {
+      const result = calculateScore();
+      await submitQuizResults(quizId!, userName, { [quiz.modules[0].id]: result });
+      setQuizComplete(true);
+      toast({
+        title: 'Quiz Completed!',
+        description: 'Your results have been submitted successfully.',
+      });
+      navigate(`/quiz/${quizId}/thank-you/${userName}`);
+    } catch (error) {
+      console.error('Failed to submit results:', error);
+      toast({
+        title: 'Submission Failed',
+        description: 'Failed to save your quiz results. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const calculateScore = () => {
     if (!quiz) return 0;
     const correctAnswers = answers.filter((answer, index) => 
       answer === quiz.modules[0].questions[index].correctOptionId
     ).length;
-    return Math.round((correctAnswers / quiz.modules[0].questions.length) * 100);
-  };
-
-  const handleNextQuestion = async () => {
-    if (currentQuestionIndex < quiz.modules[0].questions.length - 1) {
-      setCurrentQuestionIndex(prev => prev + 1);
-    } else {
-      // Quiz completed, submit results
-      if (!quizId) return;
-      
-      setIsSubmitting(true);
-      try {
-        // Prepare detailed results including questions and answers
-        const questionsWithAnswers = quiz.modules[0].questions.map((question: any, index: number) => ({
-          question: question.text,
-          selectedAnswer: question.options.find((opt: any) => opt.id === answers[index])?.text || 'No answer',
-          correctAnswer: question.options.find((opt: any) => opt.id === question.correctOptionId)?.text || 'Unknown',
-          isCorrect: answers[index] === question.correctOptionId,
-          allOptions: question.options.map((opt: any) => opt.text)
-        }));
-
-        const correctAnswersCount = questionsWithAnswers.filter(q => q.isCorrect).length;
-        const results = {
-          answers,
-          score: calculateScore(),
-          totalQuestions: quiz.modules[0].questions.length,
-          correctAnswers: correctAnswersCount,
-          questionsWithAnswers,
-          courseName: quiz.courseName,
-          modules: [{
-            title: quiz.courseName,
-            questions: questionsWithAnswers
-          }]
-        };
-
-        await storeQuizSubmission(quizId, userName, results);
-        
-        toast({
-          title: 'Quiz Completed!',
-          description: 'Your results have been submitted successfully.',
-        });
-        
-        navigate(`/quiz/${quizId}/thank-you/${userName}`);
-      } catch (error) {
-        console.error('Error submitting quiz:', error);
-        toast({
-          title: 'Submission Error',
-          description: 'There was an error submitting your results. Please try again.',
-          variant: 'destructive',
-        });
-      } finally {
-        setIsSubmitting(false);
-      }
-    }
+    return {
+      totalQuestions: quiz.modules[0].questions.length,
+      correctAnswers,
+      incorrectAnswers: quiz.modules[0].questions.length - correctAnswers,
+      questionsWithAnswers: quiz.modules[0].questions.map((q, i) => ({
+        question: q,
+        selectedOptionId: answers[i],
+        isCorrect: answers[i] === q.correctOptionId
+      })),
+      moduleId: quiz.modules[0].id
+    };
   };
 
   if (isLoading) {
@@ -147,7 +164,7 @@ export function SharedQuiz() {
     return null;
   }
 
-  if (!hasStarted) {
+  if (!userName && !showContent) {
     return (
       <div className="container max-w-xl mx-auto py-12">
         <Card className="shadow-lg">
@@ -160,7 +177,7 @@ export function SharedQuiz() {
                 Welcome to the quiz! Please enter your name to begin.
               </p>
               <p className="text-sm text-muted-foreground">
-                Total questions: {quiz.modules[0].questions.length}
+                This quiz contains 30 multiple-choice questions to test your knowledge.
               </p>
             </div>
             <form onSubmit={handleStartQuiz} className="space-y-4">
@@ -173,11 +190,102 @@ export function SharedQuiz() {
                 required
               />
               <Button type="submit" className="w-full py-6 text-lg">
-                Start Quiz
+                Continue
               </Button>
             </form>
           </CardContent>
         </Card>
+      </div>
+    );
+  }
+
+  if (showContent) {
+    return (
+      <div className="container max-w-2xl mx-auto py-8">
+        <Card className="shadow-lg">
+          <CardHeader className="text-center pb-2">
+            <CardTitle className="text-3xl font-bold">{quiz.courseName}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="prose dark:prose-invert max-w-none">
+              <div className="text-center mb-6">
+                <p className="text-muted-foreground">
+                  30 multiple-choice questions • Take your time to read the content below
+                </p>
+              </div>
+              <div className="space-y-4">
+                {quiz.modules[0].content.split('\n').map((paragraph, index) => (
+                  <p key={index} className="mb-4">{paragraph}</p>
+                ))}
+              </div>
+            </div>
+            <Button 
+              onClick={handleStartQuestions} 
+              className="w-full min-w-[150px] py-6 text-lg"
+            >
+              Start Quiz
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (quizComplete) {
+    const scoreResult = calculateScore();
+    if (typeof scoreResult === 'number') {
+      return (
+        <div className="container max-w-2xl mx-auto py-8 space-y-8">
+          <div className="text-center space-y-4">
+            <h2 className="text-3xl font-bold">Error</h2>
+            <p className="text-xl">Failed to calculate quiz results.</p>
+          </div>
+        </div>
+      );
+    }
+
+    const result = scoreResult;
+    const pdfResults = {
+      moduleId: 'module1',
+      totalQuestions: quiz.modules[0].questions.length,
+      correctAnswers: result.correctAnswers,
+      incorrectAnswers: result.totalQuestions - result.correctAnswers,
+      questionsWithAnswers: quiz.modules[0].questions.map((q, idx) => ({
+        question: {
+          text: q.text,
+          correctOptionId: 'correct',
+          options: q.options.map((opt, i) => ({
+            id: opt === q.correctAnswer ? 'correct' : `wrong${i}`,
+            text: opt
+          }))
+        },
+        selectedOptionId: answers[idx] === 'timeout' ? 'timeout' :
+          answers[idx] === q.correctAnswer ? 'correct' :
+          `wrong${q.options.indexOf(answers[idx])}`,
+        isCorrect: answers[idx] === q.correctAnswer,
+        isTimeout: answers[idx] === 'timeout'
+      }))
+    };
+
+    return (
+      <div className="container max-w-2xl mx-auto py-8 space-y-8">
+        <div className="text-center space-y-4">
+          <h2 className="text-3xl font-bold">Thank You for Completing the Quiz!</h2>
+          <p className="text-xl">Your results have been submitted successfully.</p>
+          <Button 
+            onClick={() => generatePDF({
+              userName,
+              courseName: quiz.courseName || 'Quiz Results',
+              modules: quiz.modules,
+              results: { module1: pdfResults }
+            })}
+            size="lg"
+            className="mt-4"
+          >
+            <Download className="mr-2 h-4 w-4" />
+            Download Results PDF
+          </Button>
+        </div>
       </div>
     );
   }

@@ -17,6 +17,7 @@ import { NameInput } from '@/components/NameInput';
 import { ShareCourseButton } from '@/components/ShareCourseButton';
 import { createShareLink } from '@/lib/shareLink';
 import { Input } from '@/components/ui/input';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 
 export function IndexPage() {
   const [currentModuleIndex, setCurrentModuleIndex] = useState(0);
@@ -39,14 +40,46 @@ export function IndexPage() {
   const [showNameInput, setShowNameInput] = useState(false);
 
   const handleGenerateCourse = async (text: string) => {
-    // Set content state
     setContent(text);
-    
-    // Generate course
     const success = await generateCourse(text);
     if (success) {
       setShowNameInput(true);
-      setShowModuleContent(false);
+    }
+  };
+
+  const handleNameSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const form = e.target as HTMLFormElement;
+    const courseName = (form.querySelector('input') as HTMLInputElement).value.trim();
+    
+    if (!courseName) {
+      toast({
+        title: 'Course Name Required',
+        description: 'Please enter a name for your course.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!course) return;
+
+    try {
+      // Update course with name
+      setCourse({
+        ...course,
+        courseName
+      });
+
+      // Create share link and navigate to submissions
+      const quizId = await createShareLink(courseName, course.modules);
+      navigate(`/quiz/${quizId}/results/admin`);
+    } catch (error) {
+      console.error('Error sharing quiz:', error);
+      toast({
+        title: 'Failed to share quiz',
+        description: 'Please try again later.',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -83,11 +116,10 @@ export function IndexPage() {
   const handleStartQuiz = () => {
     if (!course) return;
     const currentModule = course.modules[currentModuleIndex];
-    console.log(`Starting quiz for ${currentModule.id} with ${currentModule.questions.length} questions`);
     setQuizState({
       isActive: true,
       currentQuestionIndex: 0,
-      answers: Array(currentModule.questions.length).fill(''),
+      answers: new Array(currentModule.questions.length).fill(''),
     });
   };
 
@@ -123,17 +155,18 @@ export function IndexPage() {
           moduleId: currentModule.id,
         };
         
-        // Save the results immediately
+        // Save the results
         setModuleResults(prevResults => ({
           ...prevResults,
           [currentModule.id]: result,
         }));
 
-        // Return the final state that will trigger results display
+        // Return to module list
+        setShowModuleContent(false);
         return {
           isActive: false,
-          currentQuestionIndex: currentModule.questions.length,
-          answers: prev.answers,
+          currentQuestionIndex: 0,
+          answers: [],
         };
       }
       
@@ -174,31 +207,6 @@ export function IndexPage() {
       currentQuestionIndex: 0,
       answers: [],
     });
-  };
-
-  const handleNameSubmit = async (name: string) => {
-    if (!course) return;
-    
-    try {
-      // Update the course with the provided name
-      setCourse({
-        ...course,
-        courseName: name
-      });
-
-      // Create share link and navigate to submissions
-      const quizId = await createShareLink(name, course.modules);
-      navigate(`/quiz/${quizId}/results/admin`);
-      
-      setShowNameInput(false);
-    } catch (error) {
-      console.error('Error sharing quiz:', error);
-      toast({
-        title: 'Failed to share quiz',
-        description: 'Please try again later.',
-        variant: 'destructive',
-      });
-    }
   };
 
   const handleReset = () => {
@@ -266,102 +274,71 @@ export function IndexPage() {
     course.modules.every((module) => moduleResults[module.id]);
 
   const renderContent = () => {
-    if (isLoading) {
-      return <QuizGenerator onGenerate={handleGenerateCourse} isLoading={isLoading} />;
-    }
-
     if (!course) {
       return (
-        <div className="space-y-4">
-          <QuizGenerator onGenerate={handleGenerateCourse} isLoading={isLoading} />
-        </div>
+        <QuizGenerator onGenerate={handleGenerateCourse} isLoading={isLoading} />
       );
     }
 
-    // Add share button after course generation
-    const shareButton = course.modules.length > 0 && (
-      <div className="flex justify-center mt-4">
-        <Button
-          size="lg"
-          onClick={() => setShowNameInput(true)}
-          className="bg-primary hover:bg-primary/90"
-        >
-          Share Quiz
-        </Button>
-      </div>
-    );
-
     if (showNameInput) {
       return (
-        <>
-          <div className="container max-w-md mx-auto py-8">
-            <div className="space-y-6">
-              <div className="space-y-2 text-center">
-                <h2 className="text-2xl font-bold">Name Your Course</h2>
-                <p className="text-muted-foreground">
+        <div className="container max-w-xl mx-auto py-12">
+          <Card className="shadow-lg">
+            <CardHeader className="text-center pb-2">
+              <CardTitle className="text-3xl font-bold">Name Your Course</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="text-center space-y-2">
+                <p className="text-muted-foreground text-lg">
                   Give your course a descriptive name before sharing
                 </p>
+                <p className="text-sm text-muted-foreground">
+                  Your course has {course.modules[0].questions.length} questions
+                </p>
               </div>
-              <form onSubmit={(e) => {
-                e.preventDefault();
-                const input = e.currentTarget.querySelector('input');
-                if (input && input.value.trim()) {
-                  handleNameSubmit(input.value.trim());
-                }
-              }} className="space-y-4">
-                <div className="space-y-2">
-                  <Input
-                    type="text"
-                    placeholder="Enter course name"
-                    className="w-full"
-                    required
-                    autoFocus
-                  />
-                </div>
-                <Button
-                  type="submit"
-                  className="w-full bg-primary hover:bg-primary/90"
-                >
+              <form onSubmit={handleNameSubmit} className="space-y-4">
+                <Input
+                  type="text"
+                  placeholder="Enter course name"
+                  className="text-lg py-6"
+                  required
+                  autoFocus
+                />
+                <Button type="submit" className="w-full py-6 text-lg">
                   Create and Share Course
                 </Button>
               </form>
-            </div>
-          </div>
-        </>
+            </CardContent>
+          </Card>
+        </div>
       );
     }
 
     if (showModuleContent) {
       if (quizState.isActive) {
         const currentModule = course.modules[currentModuleIndex];
-        console.log(`Rendering question ${quizState.currentQuestionIndex + 1} of ${currentModule.questions.length}`);
         const currentQuestion = currentModule.questions[quizState.currentQuestionIndex];
         return (
           <>
             <QuizQuestion
               question={currentQuestion}
-              questionNumber={quizState.currentQuestionIndex}
+              questionNumber={quizState.currentQuestionIndex + 1}
               totalQuestions={currentModule.questions.length}
               selectedOptionId={quizState.answers[quizState.currentQuestionIndex]}
               onSelectOption={handleAnswerQuestion}
               onNext={handleNextQuestion}
             />
-            {shareButton}
           </>
         );
       }
 
       const currentModule = course.modules[currentModuleIndex];
-      
       return (
         <>
           <ModuleContent
             module={currentModule}
-            moduleNumber={currentModuleIndex}
-            totalModules={course.modules.length}
-            onStartQuiz={() => setShowNameInput(true)}
+            onStartQuiz={() => setQuizState({ ...quizState, isActive: true })}
           />
-          {shareButton}
         </>
       );
     }
@@ -374,35 +351,16 @@ export function IndexPage() {
           onModuleSelect={handleStartModule}
           moduleResults={moduleResults}
           onViewResults={handleViewResults}
-          courseName={course.courseName || "Generated Course"}
+          courseName={course.courseName || "Generated Quiz"}
         />
-        {shareButton}
       </>
     );
   };
 
   return (
-    <div className="min-h-screen flex flex-col py-12 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-background to-background/95">
-      <div className="max-w-3xl mx-auto w-full flex-1 relative">
-        <header className="text-center mb-8">
-          <div className="flex items-center justify-center mb-3">
-            <GraduationCap className="h-8 w-8 text-primary mr-2" />
-            <h1 className="text-3xl font-bold tracking-tight text-foreground">
-              IxE Training Prototype
-            </h1>
-          </div>
-          <p className="text-muted-foreground">
-            Transform any text into a mini-course with modules and quizzes using Gemini API
-          </p>
-        </header>
-        
-        <main className="flex-1">
-          {renderContent()}
-        </main>
-        
-        <footer className="mt-12 text-center text-sm text-muted-foreground">
-          <p>&copy; {new Date().getFullYear()} IxE Training Prototype. Create quizzes from any text content.</p>
-        </footer>
+    <div className="container mx-auto p-6">
+      <div className="max-w-4xl mx-auto">
+        {renderContent()}
       </div>
     </div>
   );

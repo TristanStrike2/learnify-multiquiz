@@ -37,8 +37,8 @@ export interface QuizResult {
 export type QuizState = 
   | { status: 'input' }
   | { status: 'generating' }
-  | { status: 'course', modules: Module[], currentModuleIndex: number, currentView: 'content' | 'quiz' }
-  | { status: 'quiz', currentQuestionIndex: number, questions: Question[], answers: (string | null)[], quizStartTime: number, moduleId: string }
+  | { status: 'course', modules: Module[], currentModuleIndex: number, currentView: 'name' | 'content' | 'quiz', userName?: string }
+  | { status: 'quiz', currentQuestionIndex: number, questions: Question[], answers: (string | null)[], quizStartTime: number, moduleId: string, userName: string }
   | { status: 'results', result: QuizResult, hasNextModule: boolean };
 
 export interface OpenAIQuizQuestion {
