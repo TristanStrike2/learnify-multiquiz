@@ -157,9 +157,14 @@ export function SharedQuiz() {
       });
 
       return {
-        question: question.text,
-        correctOptionId: question.correctOptionId,
-        options: question.options,
+        question: {
+          text: question.text,
+          correctOptionId: question.correctOptionId,
+          options: question.options.map(opt => ({
+            id: opt.id,
+            text: opt.text
+          }))
+        },
         selectedOptionId: selectedAnswer,
         isCorrect: isCorrect,
         isTimeout: isTimeout
@@ -295,21 +300,14 @@ export function SharedQuiz() {
           questionsWithAnswers: result.questionsWithAnswers.map(qa => {
             // Log each question's data for debugging
             console.log('Processing question for PDF:', {
-              questionText: qa.question,
-              correctOptionId: qa.correctOptionId,
+              questionText: qa.question.text,
+              correctOptionId: qa.question.correctOptionId,
               selectedOptionId: qa.selectedOptionId,
-              numOptions: qa.options.length
+              numOptions: qa.question.options.length
             });
             
             return {
-              question: {
-                text: qa.question,
-                correctOptionId: qa.correctOptionId,
-                options: qa.options.map(opt => ({
-                  id: opt.id,
-                  text: opt.text
-                }))
-              },
+              question: qa.question,
               selectedOptionId: qa.selectedOptionId,
               isCorrect: qa.isCorrect,
               isTimeout: qa.isTimeout
