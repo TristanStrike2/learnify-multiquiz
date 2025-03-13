@@ -9,62 +9,71 @@ const GEMINI_API_KEY = 'AIzaSyBGFkmJ-sdB2vAB-2eT2G2mTKHOo3XUPpU';
 const generateCourseFromText = async (text: string): Promise<Module[]> => {
   try {
     console.log('Generating course from text:', text.substring(0, 100) + '...');
+    console.log('Using API key:', GEMINI_API_KEY);
     
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`, {
+    const requestBody = JSON.stringify({
+      contents: [{
+        parts: [{
+          text: `Transform this text into a comprehensive quiz: "${text}". 
+          The quiz must have:
+          1. A clear, descriptive title
+          2. Educational content (400-600 words)
+          3. EXACTLY 30 multiple-choice quiz questions
+
+          Format your response as a JSON array with this exact structure:
+          [
+            {
+              "title": "Quiz Title",
+              "content": "Educational content that teaches the topic in a clear way...",
+              "questions": [
+                {
+                  "question": "Question text",
+                  "options": ["option1", "option2", "option3", "option4"],
+                  "correctAnswerIndex": 0
+                }
+              ]
+            }
+          ]
+          
+          Strict Requirements:
+          - Generate EXACTLY 1 quiz module
+          - The quiz MUST have EXACTLY 30 questions
+          - Each question MUST have EXACTLY 4 options
+          - Questions should test understanding and application, not just recall
+          - Content should be educational and well-structured
+          - Return ONLY the valid JSON array with no additional text
+          - All content must directly relate to the input text
+          - Questions should progressively increase in difficulty`
+        }]
+      }],
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 12000
+      }
+    });
+    
+    console.log('Request body:', requestBody);
+    const apiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`;
+    console.log('API URL (without key):', apiUrl.replace(GEMINI_API_KEY, '*****'));
+    
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        contents: [{
-          parts: [{
-            text: `Transform this text into a comprehensive quiz: "${text}". 
-            The quiz must have:
-            1. A clear, descriptive title
-            2. Educational content (400-600 words)
-            3. EXACTLY 30 multiple-choice quiz questions
-
-            Format your response as a JSON array with this exact structure:
-            [
-              {
-                "title": "Quiz Title",
-                "content": "Educational content that teaches the topic in a clear way...",
-                "questions": [
-                  {
-                    "question": "Question text",
-                    "options": ["option1", "option2", "option3", "option4"],
-                    "correctAnswerIndex": 0
-                  }
-                ]
-              }
-            ]
-            
-            Strict Requirements:
-            - Generate EXACTLY 1 quiz module
-            - The quiz MUST have EXACTLY 30 questions
-            - Each question MUST have EXACTLY 4 options
-            - Questions should test understanding and application, not just recall
-            - Content should be educational and well-structured
-            - Return ONLY the valid JSON array with no additional text
-            - All content must directly relate to the input text
-            - Questions should progressively increase in difficulty`
-          }]
-        }],
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 12000
-        }
-      })
+      body: requestBody
     });
 
+    console.log('Response status:', response.status, response.statusText);
+    
     if (!response.ok) {
       const errorData = await response.json();
-      console.error('Gemini API error:', errorData);
-      throw new Error(`API error: ${errorData.error?.message || 'Unknown error'}`);
+      console.error('Gemini API error details:', errorData);
+      throw new Error(`API error: ${errorData.error?.message || 'Unknown error'} (Status: ${response.status})`);
     }
 
     const data = await response.json();
-    console.log('Raw API response:', data);
+    console.log('Raw API response headers:', response.headers);
     
     if (!data.candidates?.[0]?.content?.parts?.[0]?.text) {
       throw new Error('Invalid response format from Gemini API');
@@ -176,11 +185,13 @@ export const useQuiz = () => {
         currentModuleIndex: 0,
         currentView: 'name' // Start with name input
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error generating course:', error);
+      // Show a more specific error message based on the error
+      const errorMessage = error?.message || 'Unknown error occurred';
       toast({
-        title: "Error",
-        description: "Failed to generate course content. Please check your API key and try again.",
+        title: "API Error",
+        description: `Failed to generate course content: ${errorMessage}`,
         variant: "destructive"
       });
       setQuizState({ status: 'input' });
@@ -334,11 +345,13 @@ export const useGenerateCourse = () => {
       const modules = await generateCourseFromText(text);
       setCourse({ modules, courseName: '' });
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error generating course:', error);
+      // Show a more specific error message based on the error
+      const errorMessage = error?.message || 'Unknown error occurred';
       toast({
-        title: "Error",
-        description: "Failed to generate course content. Please check your API key and try again.",
+        title: "API Error",
+        description: `Failed to generate course content: ${errorMessage}`,
         variant: "destructive"
       });
       return false;
