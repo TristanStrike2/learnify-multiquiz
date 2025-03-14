@@ -1,4 +1,4 @@
-quiz/:quizId/results/admin.import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { subscribeToQuizSubmissions, getSharedQuiz, deleteQuizSubmission } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
