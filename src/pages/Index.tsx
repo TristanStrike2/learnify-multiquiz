@@ -71,8 +71,8 @@ export function IndexPage() {
       });
 
       // Create share link and navigate to submissions
-      const quizId = await createShareLink(courseName, course.modules);
-      navigate(`/quiz/${quizId}/results/admin`);
+      const { quizId, urlSafeName } = await createShareLink(courseName, course.modules);
+      navigate(`/quiz/${urlSafeName}/${quizId}/results/admin`);
     } catch (error) {
       console.error('Error sharing quiz:', error);
       toast({
@@ -238,8 +238,8 @@ export function IndexPage() {
     }
     
     try {
-      const quizId = await createShareLink(course.courseName, course.modules);
-      const fullUrl = `${window.location.origin}/quiz/${quizId}`;
+      const { quizId, urlSafeName } = await createShareLink(course.courseName, course.modules);
+      const fullUrl = `${window.location.origin}/quiz/${urlSafeName}/${quizId}`;
       
       // Copy to clipboard
       await navigator.clipboard.writeText(fullUrl);
@@ -250,7 +250,7 @@ export function IndexPage() {
       });
 
       // Navigate to submissions page
-      navigate(`/quiz/${quizId}/results/admin`);
+      navigate(`/quiz/${urlSafeName}/${quizId}/results/admin`);
     } catch (error) {
       console.error('Error sharing quiz:', error);
       toast({

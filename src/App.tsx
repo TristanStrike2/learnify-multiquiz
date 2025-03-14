@@ -27,9 +27,10 @@ const App = () => (
             </header>
             <Routes>
               <Route path="/" element={<IndexPage />} />
-              <Route path="/quiz/:quizId" element={<SharedQuiz />} />
-              <Route path="/quiz/:quizId/results/:userName" element={<SubmissionsPage />} />
-              <Route path="/quiz/:quizId/thank-you/:userName" element={<ThankYouPage />} />
+              <Route path="/quiz/:courseName/:quizId" element={<SharedQuiz />} />
+              <Route path="/quiz/:courseName/:quizId/results/admin" element={<SubmissionsPage />} />
+              <Route path="/quiz/:courseName/:quizId/results/:userName" element={<SubmissionsPage />} />
+              <Route path="/quiz/:courseName/:quizId/thank-you/:userName" element={<ThankYouPage />} />
               <Route path="/submissions" element={<SubmissionsPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>

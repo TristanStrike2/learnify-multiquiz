@@ -11,7 +11,7 @@ import { Download } from 'lucide-react';
 import { generatePDF } from '@/lib/pdfGenerator';
 
 export function SharedQuiz() {
-  const { quizId } = useParams();
+  const { quizId, courseName } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [quiz, setQuiz] = useState<any>(null);
@@ -122,7 +122,7 @@ export function SharedQuiz() {
         title: 'Quiz Completed!',
         description: 'Your results have been submitted successfully.',
       });
-      navigate(`/quiz/${quizId}/thank-you/${userName}`);
+      navigate(`/quiz/${courseName}/${quizId}/thank-you/${userName}`);
     } catch (error) {
       console.error('Failed to submit results:', error);
       toast({
