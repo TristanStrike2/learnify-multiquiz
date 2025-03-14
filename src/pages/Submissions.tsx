@@ -494,13 +494,13 @@ export function SubmissionsPage() {
                 onClick={handleCopyLink}
                 className="w-full text-left font-mono bg-white dark:bg-background hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors p-3 rounded-md flex items-center gap-2 group border border-purple-100 dark:border-purple-900/50"
               >
-                <code className="flex-1 text-purple-800 dark:text-purple-200">
+                <code className="flex-1 text-purple-800 dark:text-purple-200 break-all text-sm">
                   {`${window.location.origin}/quiz/${courseName}/${quizId}`}
                 </code>
                 {copied ? (
-                  <CheckCircle2 className="h-4 w-4 text-green-500 transition-opacity" />
+                  <CheckCircle2 className="h-4 w-4 shrink-0 text-green-500 transition-opacity" />
                 ) : (
-                  <Copy className="h-4 w-4 text-purple-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <Copy className="h-4 w-4 shrink-0 text-purple-400 opacity-0 group-hover:opacity-100 transition-opacity" />
                 )}
               </button>
             </div>
