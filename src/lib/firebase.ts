@@ -245,3 +245,16 @@ export const submitQuizResults = async (
 
 // Export analytics instance
 export { analytics }; 
+
+// Delete quiz submission
+export const deleteQuizSubmission = async (quizId: string, submissionId: string) => {
+  checkDatabase();
+  try {
+    const submissionRef = ref(database!, `submissions/${quizId}/${submissionId}`);
+    await set(submissionRef, null); // Using null to delete the node
+    return true;
+  } catch (error) {
+    console.error('Error deleting quiz submission:', error);
+    throw error;
+  }
+}; 

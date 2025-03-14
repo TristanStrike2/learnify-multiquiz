@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { subscribeToQuizSubmissions, getSharedQuiz } from '@/lib/firebase';
+import { subscribeToQuizSubmissions, getSharedQuiz, deleteQuizSubmission } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { generateSubmissionReport, generatePDF } from '@/lib/pdfGenerator';
-import { Download, Share2, Copy, CheckCircle2, FileText, User, Calendar, Trophy, PlusCircle } from 'lucide-react';
+import { Download, Share2, Copy, CheckCircle2, FileText, User, Calendar, Trophy, PlusCircle, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useToast } from '@/components/ui/use-toast';
 import { Progress } from '@/components/ui/progress';
@@ -54,10 +54,13 @@ export function SubmissionsPage() {
   const { quizId } = useParams();
   const [submissions, setSubmissions] = useState<QuizSubmission[]>([]);
   const [showShareModal, setShowShareModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [submissionToDelete, setSubmissionToDelete] = useState<{ id: string; userName: string } | null>(null);
   const [copied, setCopied] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
   const [quiz, setQuiz] = useState<any>(null);
+  const [isAdmin] = useState(true); // TODO: Replace with actual admin check
 
   useEffect(() => {
     if (!quizId) return;
@@ -163,12 +166,11 @@ export function SubmissionsPage() {
 
   const handleDownloadUserPDF = async (submission: QuizSubmission) => {
     try {
+      // First check if we have all the required data
       if (!submission || !submission.results) {
-        throw new Error('No submission data available');
+        throw new Error('Submission data is missing or incomplete');
       }
 
-      console.log('Raw submission data:', JSON.stringify(submission, null, 2));
-      
       // Ensure we have all required fields
       if (!submission.results.questionsWithAnswers || 
           !Array.isArray(submission.results.questionsWithAnswers) ||
@@ -177,8 +179,13 @@ export function SubmissionsPage() {
         throw new Error('Question data is missing or incomplete');
       }
 
-      // Debug log
-      console.log('Questions with answers:', JSON.stringify(submission.results.questionsWithAnswers, null, 2));
+      // Log the submission data for debugging
+      console.log('Processing submission for PDF:', {
+        userName: submission.userName,
+        courseName: submission.results.courseName,
+        totalQuestions: submission.results.totalQuestions,
+        correctAnswers: submission.results.correctAnswers
+      });
 
       // Create properly structured PDF data
       const pdfData = {
@@ -192,41 +199,24 @@ export function SubmissionsPage() {
             correctAnswers: submission.results.correctAnswers,
             incorrectAnswers: submission.results.incorrectAnswers,
             questionsWithAnswers: submission.results.questionsWithAnswers.map(qa => {
-              // Ensure we have all required data
-              if (!qa.question || !qa.question.options || !Array.isArray(qa.question.options)) {
-                console.error('Invalid question data:', qa);
-                return {
-                  question: {
-                    text: 'Invalid question data',
-                    correctOptionId: 'correct',
-                    options: [{ id: 'correct', text: 'No options available' }]
-                  },
-                  selectedOptionId: 'unknown',
-                  isCorrect: false
-                };
-              }
-
-              // Map the options to the correct format
-              const options = qa.question.options.map((opt, i) => {
-                const isCorrect = opt.id === qa.question.correctOptionId;
-                return {
-                  id: isCorrect ? 'correct' : `wrong${i}`,
-                  text: opt.text
-                };
+              // Log each question's data for debugging
+              console.log('Processing question for PDF:', {
+                questionText: qa.question.text,
+                correctOptionId: qa.question.correctOptionId,
+                selectedOptionId: qa.selectedOptionId,
+                numOptions: qa.question.options.length
               });
-
-              // Find the index of the selected option
-              const selectedIndex = qa.question.options.findIndex(opt => opt.id === qa.selectedOptionId);
-
+              
               return {
                 question: {
                   text: qa.question.text,
-                  correctOptionId: 'correct',
-                  options
+                  correctOptionId: qa.question.correctOptionId,
+                  options: qa.question.options.map(opt => ({
+                    id: opt.id,
+                    text: opt.text
+                  }))
                 },
-                selectedOptionId: qa.selectedOptionId === qa.question.correctOptionId ? 'correct' :
-                  qa.selectedOptionId === 'timeout' ? 'timeout' :
-                  selectedIndex !== -1 ? `wrong${selectedIndex}` : 'unknown',
+                selectedOptionId: qa.selectedOptionId,
                 isCorrect: qa.isCorrect
               };
             })
@@ -234,8 +224,8 @@ export function SubmissionsPage() {
         }
       };
 
-      // Debug log final PDF data
-      console.log('Final PDF data:', JSON.stringify(pdfData, null, 2));
+      // Log the final PDF data structure
+      console.log('Final PDF data structure:', pdfData);
       
       const result = await generatePDF(pdfData);
       
@@ -267,6 +257,32 @@ export function SubmissionsPage() {
     if (percentage >= 80) return 'text-green-600 dark:text-green-400';
     if (percentage >= 60) return 'text-yellow-600 dark:text-yellow-400';
     return 'text-red-600 dark:text-red-400';
+  };
+
+  const handleDeleteClick = (submissionId: string, userName: string) => {
+    setSubmissionToDelete({ id: submissionId, userName });
+    setShowDeleteModal(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!quizId || !submissionToDelete) return;
+
+    try {
+      await deleteQuizSubmission(quizId, submissionToDelete.id);
+      toast({
+        title: 'Submission Deleted',
+        description: `${submissionToDelete.userName}'s submission has been permanently deleted.`,
+      });
+      setShowDeleteModal(false);
+      setSubmissionToDelete(null);
+    } catch (error) {
+      console.error('Error deleting submission:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to delete submission. Please try again.',
+        variant: 'destructive',
+      });
+    }
   };
 
   return (
@@ -384,22 +400,35 @@ export function SubmissionsPage() {
                 ? Math.round((submission.results.correctAnswers / submission.results.totalQuestions) * 100)
                 : 0;
             
+            const submissionId = `${submission.timestamp}_${submission.userName}`;
+            
             return (
               <Card 
-                key={submission.timestamp}
+                key={submissionId}
                 className="overflow-hidden transition-all duration-200 hover:shadow-lg hover:border-purple-200 dark:hover:border-purple-900/50"
               >
                 <CardHeader className="border-b bg-gradient-to-br from-purple-50 to-white dark:from-purple-950/20 dark:to-background">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-purple-100 dark:bg-purple-900/50 rounded-full">
-                      <User className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-xl">{submission.userName}</CardTitle>
-                      <CardDescription>
-                        {format(new Date(submission.timestamp), 'PPP pp')}
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <CardTitle className="flex items-center gap-2">
+                        <User className="h-4 w-4" />
+                        {submission.userName}
+                      </CardTitle>
+                      <CardDescription className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4" />
+                        {format(new Date(submission.timestamp), 'PPP')}
                       </CardDescription>
                     </div>
+                    {isAdmin && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="absolute top-4 right-4 text-destructive hover:text-destructive/90 hover:bg-destructive/10"
+                        onClick={() => handleDeleteClick(submissionId, submission.userName)}
+                      >
+                        <Trash2 className="h-5 w-5" />
+                      </Button>
+                    )}
                   </div>
                 </CardHeader>
                 <CardContent className="pt-6">
@@ -471,6 +500,31 @@ export function SubmissionsPage() {
               Recipients can take the quiz and their results will appear on your dashboard
             </p>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Submission</DialogTitle>
+            <DialogDescription className="text-destructive">
+              Are you sure you want to delete {submissionToDelete?.userName}'s submission? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setShowDeleteModal(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmDelete}
+            >
+              Delete Permanently
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
