@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+quiz/:quizId/results/admin.import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { subscribeToQuizSubmissions, getSharedQuiz, deleteQuizSubmission } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
@@ -51,7 +51,7 @@ interface QuizSubmission {
 }
 
 export function SubmissionsPage() {
-  const { quizId } = useParams();
+  const { quizId, userName, courseName } = useParams();
   const [submissions, setSubmissions] = useState<QuizSubmission[]>([]);
   const [showShareModal, setShowShareModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -60,7 +60,7 @@ export function SubmissionsPage() {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [quiz, setQuiz] = useState<any>(null);
-  const [isAdmin] = useState(true); // TODO: Replace with actual admin check
+  const [isAdmin] = useState(window.location.pathname.includes('/results/admin')); // Check if we're on the admin route
 
   useEffect(() => {
     if (!quizId) return;
@@ -128,7 +128,7 @@ export function SubmissionsPage() {
   };
 
   const handleCopyLink = async () => {
-    const shareUrl = `${window.location.origin}/quiz/${quizId}`;
+    const shareUrl = `${window.location.origin}/quiz/${courseName}/${quizId}`;
     try {
       await navigator.clipboard.writeText(shareUrl);
       setCopied(true);
@@ -487,7 +487,7 @@ export function SubmissionsPage() {
                 className="w-full text-left font-mono bg-white dark:bg-background hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors p-3 rounded-md flex items-center gap-2 group border border-purple-100 dark:border-purple-900/50"
               >
                 <code className="flex-1 text-purple-800 dark:text-purple-200">
-                  {`${window.location.origin}/quiz/${quizId}`}
+                  {`${window.location.origin}/quiz/${courseName}/${quizId}`}
                 </code>
                 {copied ? (
                   <CheckCircle2 className="h-4 w-4 text-green-500 transition-opacity" />
