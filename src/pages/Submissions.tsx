@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { subscribeToQuizSubmissions, getSharedQuiz, deleteQuizSubmission } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -52,6 +52,7 @@ interface QuizSubmission {
 
 export function SubmissionsPage() {
   const { quizId, userName, courseName } = useParams();
+  const location = useLocation();
   const [submissions, setSubmissions] = useState<QuizSubmission[]>([]);
   const [showShareModal, setShowShareModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -60,7 +61,7 @@ export function SubmissionsPage() {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [quiz, setQuiz] = useState<any>(null);
-  const [isAdmin] = useState(window.location.pathname.includes('/results/admin')); // Check if we're on the admin route
+  const isAdmin = location.pathname.includes('/results/admin');
 
   useEffect(() => {
     if (!quizId) return;
@@ -298,7 +299,14 @@ export function SubmissionsPage() {
         </div>
         <div className="flex flex-col sm:flex-row gap-4">
           <Button 
-            onClick={() => navigate('/')}
+            onClick={() => {
+              // Clear any stored data
+              localStorage.removeItem('currentCourse');
+              localStorage.removeItem('moduleResults');
+              localStorage.removeItem('quizState');
+              // Navigate to home page
+              navigate('/');
+            }}
             className="bg-green-600 hover:bg-green-700"
           >
             <PlusCircle className="mr-2 h-4 w-4" />
