@@ -51,8 +51,8 @@ export function IndexPage() {
     // Generate the course with the provided text
     const success = await generateCourse(text);
     
-    if (success) {
-      // Reset other states
+    if (!success) {
+      // Reset states if generation failed
       setShowModuleContent(false);
       setQuizState({
         isActive: false,
@@ -246,6 +246,7 @@ export function IndexPage() {
       answers: [],
     });
     setUserName('');
+    setContent('');
   };
 
   const handleShare = async () => {

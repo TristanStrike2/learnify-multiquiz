@@ -51,19 +51,21 @@ export default function QuizGenerator({ onGenerate, isLoading = false }: QuizGen
           onChange={(e) => setText(e.target.value)}
           placeholder="Enter your educational content here (minimum 100 characters)..."
           className="min-h-[200px]"
+          disabled={isLoading}
         />
         <div className="flex justify-end">
           <Button
             onClick={handleSubmit}
             disabled={isLoading || text.trim().length < 100}
+            className="px-6"
           >
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Generating...
+                Generating Quiz...
               </>
             ) : (
-              'Generate Quiz'
+              'Submit Content'
             )}
           </Button>
         </div>

@@ -443,13 +443,14 @@ export const useGenerateCourse = () => {
 
   const generateCourse = async (text: string): Promise<boolean> => {
     try {
+      // Set loading state before starting generation
       setIsLoading(true);
       
       // Generate the course modules
       console.log('Generating course from text:', text.substring(0, 100) + '...');
       const modules = await generateCourseFromText(text);
       
-      if (modules.length === 0) {
+      if (!modules || modules.length === 0) {
         toast({
           title: "Error",
           description: "Could not generate course modules from the provided text. Please try again with more detailed content.",
@@ -481,14 +482,22 @@ export const useGenerateCourse = () => {
       });
       return false;
     } finally {
+      // Always reset loading state when done
       setIsLoading(false);
     }
   };
+
+  const resetCourse = useCallback(() => {
+    setCourse(null);
+    setIsLoading(false);
+    localStorage.removeItem('generatedModules');
+  }, []);
 
   return {
     generateCourse,
     course,
     isLoading,
-    setCourse
+    setCourse,
+    resetCourse
   };
 };
