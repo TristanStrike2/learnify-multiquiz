@@ -20,28 +20,78 @@ import {
   query,
   orderBy,
   onSnapshot,
-  DocumentData
+  DocumentData,
+  Firestore
 } from 'firebase/firestore';
 import { Module } from '@/types/quiz';
 
-// Initialize Firebase
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
+// Debug function to safely log environment variables
+const debugEnvVariables = () => {
+  const envVars = Object.keys(import.meta.env).filter(key => key.startsWith('VITE_'));
+  console.log('Environment Mode:', import.meta.env.MODE);
+  console.log('Base URL:', import.meta.env.BASE_URL);
+  console.log('Available Firebase env variables:', envVars);
+  return envVars;
 };
 
-// Initialize Firebase app and Firestore
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+// Validate environment variables
+const validateEnvVariables = () => {
+  const envVars = debugEnvVariables();
+  
+  const requiredVars = [
+    'VITE_FIREBASE_API_KEY',
+    'VITE_FIREBASE_AUTH_DOMAIN',
+    'VITE_FIREBASE_PROJECT_ID',
+    'VITE_FIREBASE_STORAGE_BUCKET',
+    'VITE_FIREBASE_MESSAGING_SENDER_ID',
+    'VITE_FIREBASE_APP_ID'
+  ];
+
+  const missingVars = requiredVars.filter(key => !import.meta.env[key]);
+  
+  if (missingVars.length > 0) {
+    const error = new Error(`Missing required Firebase configuration: ${missingVars.join(', ')}`);
+    console.error(error);
+    throw error;
+  }
+
+  return {
+    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+    appId: import.meta.env.VITE_FIREBASE_APP_ID,
+    measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
+  };
+};
+
+// Initialize Firebase
+let firebaseApp;
+let firestoreDb: Firestore;
+
+try {
+  const firebaseConfig = validateEnvVariables();
+  firebaseApp = initializeApp(firebaseConfig);
+  firestoreDb = getFirestore(firebaseApp);
+  console.log('Firebase initialized successfully');
+} catch (error) {
+  console.error('Firebase initialization failed:', error);
+  throw error;
+}
+
+// Helper function to check if Firestore is initialized
+const ensureFirestore = () => {
+  if (!firestoreDb) {
+    throw new Error('Firestore is not initialized');
+  }
+  return firestoreDb;
+};
 
 // Store quiz data
 export async function storeQuizData(quizId: string, courseName: string, modules: Module[]) {
   try {
+    const db = ensureFirestore();
     const quizRef = doc(collection(db, 'quizzes'), quizId);
     const quizData = {
       courseName,
@@ -61,6 +111,7 @@ export async function storeQuizData(quizId: string, courseName: string, modules:
 // Get shared quiz
 export async function getSharedQuiz(quizId: string) {
   try {
+    const db = ensureFirestore();
     const quizRef = doc(collection(db, 'quizzes'), quizId);
     const quizDoc = await getDoc(quizRef);
     
@@ -78,6 +129,7 @@ export async function getSharedQuiz(quizId: string) {
 // Store quiz submission
 export async function submitQuizResults(quizId: string, userName: string, results: any) {
   try {
+    const db = ensureFirestore();
     const submissionRef = doc(collection(db, `quizzes/${quizId}/submissions`), `${Date.now()}_${userName}`);
     const submissionData = {
       userName,
@@ -99,6 +151,7 @@ export async function submitQuizResults(quizId: string, userName: string, result
 // Get quiz submissions
 export async function getQuizSubmissions(quizId: string): Promise<DocumentData[]> {
   try {
+    const db = ensureFirestore();
     const submissionsRef = collection(db, `quizzes/${quizId}/submissions`);
     const submissionsQuery = query(submissionsRef, orderBy('timestamp', 'desc'));
     const snapshot = await getDocs(submissionsQuery);
@@ -114,6 +167,7 @@ export function subscribeToQuizSubmissions(
   quizId: string,
   callback: (submissions: DocumentData[]) => void
 ) {
+  const db = ensureFirestore();
   const submissionsRef = collection(db, `quizzes/${quizId}/submissions`);
   const submissionsQuery = query(submissionsRef, orderBy('timestamp', 'desc'));
   
@@ -126,6 +180,7 @@ export function subscribeToQuizSubmissions(
 // Delete quiz submission
 export async function deleteQuizSubmission(quizId: string, submissionId: string) {
   try {
+    const db = ensureFirestore();
     const submissionRef = doc(db, `quizzes/${quizId}/submissions/${submissionId}`);
     await deleteDoc(submissionRef);
     return true;
@@ -135,104 +190,12 @@ export async function deleteQuizSubmission(quizId: string, submissionId: string)
   }
 }
 
-// Debug function to safely log environment variables
-const debugEnvVariables = () => {
-  const envVars = Object.keys(import.meta.env).filter(key => key.startsWith('VITE_'));
-  console.log('Environment Mode:', import.meta.env.MODE);
-  console.log('Base URL:', import.meta.env.BASE_URL);
-  console.log('Available Firebase env variables:', envVars);
-  return envVars;
-};
-
-// Validate environment variables
-const validateEnvVariables = () => {
-  const envVars = debugEnvVariables();
-  
-  const requiredVars = [
-    'VITE_FIREBASE_API_KEY',
-    'VITE_FIREBASE_AUTH_DOMAIN',
-    'VITE_FIREBASE_DATABASE_URL',
-    'VITE_FIREBASE_PROJECT_ID',
-    'VITE_FIREBASE_STORAGE_BUCKET',
-    'VITE_FIREBASE_MESSAGING_SENDER_ID',
-    'VITE_FIREBASE_APP_ID'
-  ];
-
-  const missingVars = requiredVars.filter(key => !import.meta.env[key]);
-  
-  if (missingVars.length > 0) {
-    const error = new Error(`Missing required Firebase configuration: ${missingVars.join(', ')}`);
-    console.error(error);
-    throw error;
-  }
-
-  const config = {
-    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-    databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL,
-    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-    appId: import.meta.env.VITE_FIREBASE_APP_ID,
-    measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
-  };
-
-  // Store config for debugging (without sensitive data)
-  window._firebaseConfig = {
-    ...config,
-    apiKey: '***',
-    appId: '***'
-  };
-
-  return config;
-};
-
-let initializationAttempts = 0;
-const MAX_INITIALIZATION_ATTEMPTS = 3;
-
-const initializeFirebase = async () => {
-  try {
-    console.log('Initializing Firebase...');
-    const firebaseConfig = validateEnvVariables();
-    
-    // Initialize Firebase app if not already initialized
-    if (!app) {
-      app = initializeApp(firebaseConfig);
-      console.log('Firebase app initialized successfully');
-    }
-    
-    // Initialize Firestore
-    db = getFirestore(app);
-    
-    console.log('Firebase services initialized successfully');
-    return true;
-  } catch (error) {
-    console.error('Firebase initialization failed:', error);
-    initializationAttempts++;
-    
-    if (initializationAttempts < MAX_INITIALIZATION_ATTEMPTS) {
-      const retryDelay = Math.min(1000 * Math.pow(2, initializationAttempts - 1), 10000);
-      console.log(`Retrying initialization in ${retryDelay}ms (attempt ${initializationAttempts + 1}/${MAX_INITIALIZATION_ATTEMPTS})...`);
-      await new Promise(resolve => setTimeout(resolve, retryDelay));
-      return initializeFirebase();
-    }
-    
-    window._firebaseInitError = error instanceof Error ? error : new Error(String(error));
-    throw error;
-  }
-};
-
-// Initialize Firebase
-initializeFirebase().catch(error => {
-  console.error('Final Firebase initialization failed:', error);
-});
-
 // Enhanced database check with detailed error
 const checkDatabase = () => {
-  if (!db) {
+  if (!firestoreDb) {
     const error = window._firebaseInitError || new Error('Firebase not initialized');
     console.error('Database check failed:', {
-      hasFirestore: !!db,
+      hasFirestore: !!firestoreDb,
       config: window._firebaseConfig,
       error
     });
@@ -246,7 +209,7 @@ const retryOperation = async (operation: () => Promise<any>, maxAttempts = 3, de
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
       // Check Firebase initialization
-      if (!db) {
+      if (!firestoreDb) {
         console.log('Firebase services not initialized, attempting to initialize...');
         await initializeFirebase();
       }
@@ -291,7 +254,7 @@ export const storeQuizSubmission = async (
   return retryOperation(async () => {
     checkDatabase();
     const quiz = await getSharedQuiz(quizId);
-    const submissionRef = doc(collection(db, `quizzes/${quizId}/submissions`), `${Date.now()}_${userName}`);
+    const submissionRef = doc(collection(firestoreDb, `quizzes/${quizId}/submissions`), `${Date.now()}_${userName}`);
     const submissionData = {
       userName,
       timestamp: Date.now(),
