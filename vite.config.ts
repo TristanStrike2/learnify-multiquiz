@@ -18,15 +18,7 @@ export default defineConfig({
   build: {
     outDir: "dist",
     sourcemap: true,
-    target: 'es2020',
-    rollupOptions: {
-      external: ['zustand'],
-      output: {
-        globals: {
-          zustand: 'Zustand'
-        }
-      }
-    },
+    target: 'es2020'
   },
   base: "/",
   define: {
