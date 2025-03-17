@@ -101,10 +101,9 @@ const initializeFirebase = async () => {
       database = getDatabase(app);
       // Initialize Firestore with settings
       firestore = initializeFirestore(app, {
-        experimentalForceLongPolling: true,
-        experimentalAutoDetectLongPolling: true
+        experimentalForceLongPolling: true // Use only force long polling
       });
-      console.log('Firestore initialized with custom settings');
+      console.log('Firestore initialized with long polling enabled');
       
       // Enable offline persistence first
       try {
