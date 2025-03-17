@@ -1,7 +1,6 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
-import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -19,27 +18,18 @@ export default defineConfig({
   build: {
     outDir: "dist",
     sourcemap: true,
+    target: 'es2020',
     rollupOptions: {
+      external: ['zustand'],
       output: {
-        manualChunks: (id) => {
-          if (id.includes('node_modules')) {
-            if (id.includes('zustand')) {
-              return 'zustand';
-            }
-            if (id.includes('react')) {
-              return 'react';
-            }
-            return 'vendor';
-          }
-        },
-      },
+        globals: {
+          zustand: 'Zustand'
+        }
+      }
     },
   },
   base: "/",
-  optimizeDeps: {
-    include: ['zustand', 'zustand/middleware'],
-    esbuildOptions: {
-      target: 'es2020',
-    },
-  },
+  define: {
+    'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV)
+  }
 });
