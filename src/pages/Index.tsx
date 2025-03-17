@@ -49,6 +49,16 @@ export function IndexPage() {
     const success = await generateCourse(text);
     if (success) {
       setShowNameInput(true);
+      // Reset other states to prevent showing quiz content
+      setShowModuleContent(false);
+      setQuizState({
+        isActive: false,
+        currentQuestionIndex: 0,
+        answers: [],
+      });
+      // Prevent any other content from showing
+      setCurrentModuleIndex(0);
+      setModuleResults({});
     }
   };
 
@@ -77,6 +87,13 @@ export function IndexPage() {
 
       // Create share link and navigate to submissions
       const { quizId, urlSafeName } = await createShareLink(courseName, course.modules);
+      
+      // Clear any stored state before navigating
+      localStorage.removeItem('currentCourse');
+      localStorage.removeItem('moduleResults');
+      localStorage.removeItem('quizState');
+      
+      // Navigate to admin page
       navigate(`/quiz/${urlSafeName}/${quizId}/results/admin`);
     } catch (error) {
       console.error('Error sharing quiz:', error);
@@ -319,47 +336,8 @@ export function IndexPage() {
       );
     }
 
-    if (showModuleContent) {
-      if (quizState.isActive) {
-        const currentModule = course.modules[currentModuleIndex];
-        const currentQuestion = currentModule.questions[quizState.currentQuestionIndex];
-        return (
-          <>
-            <QuizQuestion
-              question={currentQuestion}
-              questionNumber={quizState.currentQuestionIndex + 1}
-              totalQuestions={currentModule.questions.length}
-              selectedOptionId={quizState.answers[quizState.currentQuestionIndex]}
-              onSelectOption={handleAnswerQuestion}
-              onNext={handleNextQuestion}
-            />
-          </>
-        );
-      }
-
-      const currentModule = course.modules[currentModuleIndex];
-      return (
-        <>
-          <ModuleContent
-            module={currentModule}
-            onStartQuiz={() => setQuizState({ ...quizState, isActive: true })}
-          />
-        </>
-      );
-    }
-
-    return (
-      <>
-        <ModuleList
-          modules={course.modules}
-          currentModuleIndex={currentModuleIndex}
-          onModuleSelect={handleStartModule}
-          moduleResults={moduleResults}
-          onViewResults={handleViewResults}
-          courseName={course.courseName || "Generated Quiz"}
-        />
-      </>
-    );
+    // Return null for other states to prevent showing quiz content
+    return null;
   };
 
   return (
