@@ -184,9 +184,22 @@ export function SharedQuiz() {
   };
 
   const calculateScore = () => {
-    if (!quiz || !quiz.modules[0] || !quiz.modules[0].questions) return 0;
+    if (!quiz || !quiz.modules[0] || !quiz.modules[0].questions) {
+      console.error('Invalid quiz data structure:', {
+        quiz: Boolean(quiz),
+        hasModules: quiz?.modules?.length > 0,
+        hasQuestions: quiz?.modules?.[0]?.questions?.length
+      });
+      return 0;
+    }
 
     const module = quiz.modules[0];
+    console.log('Module data:', {
+      moduleId: module.id,
+      title: module.title,
+      questionsCount: module.questions.length
+    });
+
     const questions = module.questions;
     
     // Map through all questions to create detailed results
@@ -223,15 +236,6 @@ export function SharedQuiz() {
         };
       });
 
-      // Log the processed question data
-      console.log('Processing question:', {
-        questionText,
-        correctOptionId: question.correctOptionId,
-        selectedAnswer,
-        isCorrect,
-        numOptions: formattedOptions.length
-      });
-
       return {
         question: {
           text: questionText,
@@ -247,9 +251,10 @@ export function SharedQuiz() {
     const correctAnswers = questionsWithAnswers.filter(qa => qa.isCorrect).length;
     const totalQuestions = questions.length;
 
-    // Log the final results for debugging
+    // Ensure moduleId is set
+    const moduleId = module.id || `module_${Date.now()}`;
     console.log('Final quiz results:', {
-      moduleId: module.id,
+      moduleId,
       courseName: quiz.courseName,
       totalQuestions,
       correctAnswers,
@@ -257,7 +262,7 @@ export function SharedQuiz() {
     });
 
     return {
-      moduleId: module.id,
+      moduleId,
       courseName: quiz.courseName || 'Quiz Results',
       totalQuestions: totalQuestions,
       correctAnswers: correctAnswers,

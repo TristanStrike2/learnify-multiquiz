@@ -92,14 +92,29 @@ const ensureFirestore = () => {
 export async function storeQuizData(quizId: string, courseName: string, modules: Module[]) {
   try {
     const db = ensureFirestore();
-    const quizRef = doc(collection(db, 'quizzes'), quizId);
+
+    // Validate modules have IDs
+    const modulesWithIds = modules.map((module, index) => ({
+      ...module,
+      id: module.id || `module_${index + 1}`
+    }));
+
     const quizData = {
       courseName,
-      modules,
-      numberOfQuestions: modules[0]?.questions?.length || 0,
+      modules: modulesWithIds,
+      numberOfQuestions: modulesWithIds[0]?.questions?.length || 0,
       createdAt: serverTimestamp()
     };
     
+    console.log('Storing quiz data:', {
+      quizId,
+      courseName,
+      moduleCount: modulesWithIds.length,
+      firstModuleId: modulesWithIds[0]?.id,
+      questionCount: quizData.numberOfQuestions
+    });
+    
+    const quizRef = doc(collection(db, 'quizzes'), quizId);
     await setDoc(quizRef, quizData);
     return true;
   } catch (error) {
@@ -149,12 +164,27 @@ export async function submitQuizResults(quizId: string, userName: string, result
       throw new Error('Invalid module results data');
     }
 
+    // Log the incoming results structure
+    console.log('Processing quiz results:', {
+      quizId,
+      userName,
+      resultsStructure: {
+        isNested: Object.values(results)[0] !== results,
+        hasModuleId: Boolean(moduleResults.moduleId),
+        moduleId: moduleResults.moduleId,
+        totalQuestions: moduleResults.totalQuestions
+      }
+    });
+
+    // Ensure moduleId exists
+    const moduleId = moduleResults.moduleId || quiz.modules[0]?.id || `module_${Date.now()}`;
+
     // Create a properly structured submission document
     const submissionData = {
       userName,
       timestamp: serverTimestamp(),
       results: {
-        moduleId: moduleResults.moduleId,
+        moduleId,
         totalQuestions: moduleResults.totalQuestions,
         correctAnswers: moduleResults.correctAnswers,
         incorrectAnswers: moduleResults.incorrectAnswers,
@@ -165,7 +195,7 @@ export async function submitQuizResults(quizId: string, userName: string, result
     };
 
     // Validate required fields
-    const requiredFields = ['moduleId', 'totalQuestions', 'correctAnswers', 'incorrectAnswers'];
+    const requiredFields = ['totalQuestions', 'correctAnswers', 'incorrectAnswers'];
     const missingFields = requiredFields.filter(field => !moduleResults[field]);
     if (missingFields.length > 0) {
       throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
