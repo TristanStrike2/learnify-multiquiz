@@ -1,0 +1,34 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isValidQuiz(quiz) {
+      return quiz.size() > 0 
+        && quiz.courseName is string
+        && quiz.modules is list
+        && quiz.numberOfQuestions is number
+        && quiz.createdAt is timestamp;
+    }
+
+    // Quizzes collection rules
+    match /quizzes/{quizId} {
+      // Allow reading quizzes without authentication
+      allow read: if true;
+      
+      // Allow creating quizzes with validation
+      allow create: if isValidQuiz(request.resource.data);
+      
+      // Allow updates only if the structure remains valid
+      allow update: if isValidQuiz(request.resource.data);
+      
+      // Allow deletion (you might want to restrict this based on your requirements)
+      allow delete: if false;
+    }
+
+    // Default deny all other access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+} 

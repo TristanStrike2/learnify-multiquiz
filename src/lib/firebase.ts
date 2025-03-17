@@ -18,8 +18,8 @@ import {
   serverTimestamp, 
   collection, 
   connectFirestoreEmulator,
-  enableIndexedDbPersistence,
-  initializeFirestore
+  initializeFirestore,
+  enableIndexedDbPersistence
 } from 'firebase/firestore';
 import { Module } from '@/types/quiz';
 
@@ -87,8 +87,11 @@ const initializeFirebase = async () => {
     console.log('Initializing Firebase...');
     const firebaseConfig = validateEnvVariables();
     
-    app = initializeApp(firebaseConfig);
-    console.log('Firebase app initialized successfully');
+    // Initialize Firebase app if not already initialized
+    if (!app) {
+      app = initializeApp(firebaseConfig);
+      console.log('Firebase app initialized successfully');
+    }
     
     try {
       analytics = getAnalytics(app);
@@ -98,28 +101,38 @@ const initializeFirebase = async () => {
     }
 
     try {
+      // Initialize Realtime Database with region
       database = getDatabase(app);
-      // Initialize Firestore with settings
-      firestore = initializeFirestore(app, {
-        experimentalForceLongPolling: true // Use only force long polling
-      });
-      console.log('Firestore initialized with long polling enabled');
       
-      // Enable offline persistence first
+      // Initialize Firestore with explicit settings
+      firestore = initializeFirestore(app, {
+        experimentalForceLongPolling: false, // Use WebSocket by default
+        experimentalAutoDetectLongPolling: true, // Auto-detect if WebSocket fails
+        cacheSizeBytes: 100 * 1024 * 1024, // 100MB cache
+      });
+      
+      console.log('Database services initialized');
+
+      // Enable offline persistence with better error handling
       try {
-        await enableIndexedDbPersistence(firestore);
-        console.log('Offline persistence enabled');
-      } catch (err: any) {
-        if (err.code === 'failed-precondition') {
-          console.warn('Multiple tabs open, persistence can only be enabled in one tab at a time.');
-        } else if (err.code === 'unimplemented') {
-          console.warn('The current browser doesn\'t support offline persistence');
-        } else {
-          console.error('Error enabling persistence:', err);
-        }
+        await enableIndexedDbPersistence(firestore).catch((err) => {
+          if (err.code === 'failed-precondition') {
+            // Multiple tabs open, persistence can only be enabled in one tab
+            console.warn('Persistence disabled: Multiple tabs open');
+          } else if (err.code === 'unimplemented') {
+            // Client doesn't support persistence
+            console.warn('Persistence not supported in this environment');
+          } else {
+            throw err;
+          }
+        });
+        console.log('Offline persistence configured');
+      } catch (persistenceError) {
+        console.error('Error configuring persistence:', persistenceError);
+        // Continue without persistence
       }
       
-      // Add connection state logging
+      // Monitor connection state
       const connectedRef = ref(database, '.info/connected');
       onValue(connectedRef, (snap) => {
         const isConnected = snap.val() === true;
@@ -127,7 +140,8 @@ const initializeFirebase = async () => {
         console.log('Firebase connection state:', window._firebaseConnectionState);
       });
       
-      console.log('Database and Firestore initialized successfully');
+      console.log('Firebase services initialized successfully');
+      return true;
     } catch (dbError) {
       console.error('Database initialization failed:', dbError);
       throw dbError;
@@ -137,8 +151,9 @@ const initializeFirebase = async () => {
     initializationAttempts++;
     
     if (initializationAttempts < MAX_INITIALIZATION_ATTEMPTS) {
-      console.log(`Retrying initialization (attempt ${initializationAttempts + 1}/${MAX_INITIALIZATION_ATTEMPTS})...`);
-      await new Promise(resolve => setTimeout(resolve, 1000 * initializationAttempts)); // Exponential backoff
+      const retryDelay = Math.min(1000 * Math.pow(2, initializationAttempts - 1), 10000);
+      console.log(`Retrying initialization in ${retryDelay}ms (attempt ${initializationAttempts + 1}/${MAX_INITIALIZATION_ATTEMPTS})...`);
+      await new Promise(resolve => setTimeout(resolve, retryDelay));
       return initializeFirebase();
     }
     
@@ -174,10 +189,17 @@ const retryOperation = async (operation: () => Promise<any>, maxAttempts = 3, de
   let lastError;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
+      // Check Firebase initialization
+      if (!database || !firestore) {
+        console.log('Firebase services not initialized, attempting to initialize...');
+        await initializeFirebase();
+      }
+
       // Check connection state before attempting operation
       if (window._firebaseConnectionState === 'disconnected') {
         console.warn(`Firebase is disconnected, waiting before attempt ${attempt}...`);
         await new Promise(resolve => setTimeout(resolve, delay));
+        continue; // Skip this attempt if still disconnected
       }
       
       const result = await operation();
@@ -196,8 +218,14 @@ const retryOperation = async (operation: () => Promise<any>, maxAttempts = 3, de
         details: error.details || error.serverResponse || undefined
       });
       
+      // Check if error is due to network/connection issues
+      if (error.code === 'unavailable' || error.code === 'network-request-failed') {
+        console.log('Network error detected, waiting longer before retry...');
+        delay *= 2; // Double the delay for network issues
+      }
+      
       if (attempt < maxAttempts) {
-        const backoffDelay = delay * Math.pow(2, attempt - 1); // Exponential backoff
+        const backoffDelay = Math.min(delay * Math.pow(2, attempt - 1), 10000); // Cap at 10 seconds
         console.log(`Waiting ${backoffDelay}ms before retry...`);
         await new Promise(resolve => setTimeout(resolve, backoffDelay));
       }

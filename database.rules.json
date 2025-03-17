@@ -1,0 +1,42 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "submissions": {
+      "$quizId": {
+        ".read": true,
+        "$submissionId": {
+          ".write": true,
+          ".validate": "newData.hasChildren(['userName', 'timestamp', 'results'])",
+          "userName": {
+            ".validate": "newData.isString() && newData.val().length > 0"
+          },
+          "timestamp": {
+            ".validate": "newData.isNumber() && newData.val() <= now"
+          },
+          "results": {
+            ".validate": "newData.hasChildren(['courseName', 'modules', 'totalQuestions', 'correctAnswers', 'incorrectAnswers', 'questionsWithAnswers'])",
+            "courseName": {
+              ".validate": "newData.isString()"
+            },
+            "modules": {
+              ".validate": "newData.hasChildren()"
+            },
+            "totalQuestions": {
+              ".validate": "newData.isNumber() && newData.val() > 0"
+            },
+            "correctAnswers": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= root.child('submissions').child($quizId).child($submissionId).child('results').child('totalQuestions').val()"
+            },
+            "incorrectAnswers": {
+              ".validate": "newData.isNumber() && newData.val() >= 0"
+            },
+            "questionsWithAnswers": {
+              ".validate": "newData.hasChildren()"
+            }
+          }
+        }
+      }
+    }
+  }
+} 
