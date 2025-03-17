@@ -1,3 +1,5 @@
+import { Timestamp } from 'firebase/firestore';
+
 export interface Question {
   id: string;
   text: string;
@@ -53,5 +55,13 @@ export interface OpenAIModule {
   title: string;
   content: string;
   questions: OpenAIQuizQuestion[];
+}
+
+export interface SharedQuiz {
+  id: string;
+  courseName: string;
+  modules: Module[];
+  createdAt: Timestamp;
+  numberOfQuestions: number;
 }
 

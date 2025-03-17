@@ -9,7 +9,8 @@ import { Progress } from '@/components/ui/progress';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Download } from 'lucide-react';
 import { generatePDF } from '@/lib/pdfGenerator';
-import { SharedQuiz as SharedQuizType } from '@/lib/shareLink';
+import { SharedQuiz as SharedQuizType } from '@/types/quiz';
+import { DocumentData } from 'firebase/firestore';
 
 export function SharedQuiz() {
   const { quizId, courseName } = useParams();
@@ -44,7 +45,16 @@ export function SharedQuiz() {
             courseName: quizData.courseName
           });
 
-          setQuiz(quizData);
+          // Convert Firestore DocumentData to SharedQuizType
+          const typedQuizData: SharedQuizType = {
+            id: quizId,
+            courseName: quizData.courseName,
+            modules: quizData.modules,
+            createdAt: quizData.createdAt,
+            numberOfQuestions: quizData.numberOfQuestions
+          };
+
+          setQuiz(typedQuizData);
         } else {
           console.error('Quiz data is null or undefined');
           toast({

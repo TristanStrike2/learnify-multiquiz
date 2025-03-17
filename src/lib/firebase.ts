@@ -8,7 +8,7 @@ declare global {
 import { initializeApp } from 'firebase/app';
 import { getAnalytics } from 'firebase/analytics';
 import { getDatabase, ref, set, onValue, off, get } from 'firebase/database';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { getFirestore, doc, getDoc, setDoc, serverTimestamp, collection } from 'firebase/firestore';
 import { Module } from '@/types/quiz';
 
 // Debug function to safely log environment variables
@@ -54,6 +54,7 @@ const validateEnvVariables = () => {
 let app;
 let analytics;
 let database;
+let firestore;
 
 try {
   console.log('Initializing Firebase...');
@@ -72,7 +73,8 @@ try {
 
   try {
     database = getDatabase(app);
-    console.log('Database initialized successfully');
+    firestore = getFirestore(app);
+    console.log('Database and Firestore initialized successfully');
   } catch (dbError) {
     console.error('Database initialization failed:', dbError);
     throw dbError;
@@ -83,6 +85,7 @@ try {
   window._firebaseInitError = error;
   // Create dummy implementations to prevent crashes
   database = null;
+  firestore = null;
 }
 
 // Modify all database operations to check for initialization
@@ -103,7 +106,11 @@ export async function storeQuizData(quizId: string, courseName: string, modules:
       firstModuleQuestions: modules[0]?.questions?.length
     });
     
-    const quizRef = doc(database!, 'quizzes', quizId);
+    if (!firestore) {
+      throw new Error('Firestore not initialized');
+    }
+    
+    const quizRef = doc(collection(firestore, 'quizzes'), quizId);
     const quizData = {
       courseName,
       modules,
@@ -130,7 +137,11 @@ export async function storeQuizData(quizId: string, courseName: string, modules:
 export async function getSharedQuiz(quizId: string) {
   try {
     console.log('Fetching shared quiz:', quizId);
-    const quizRef = doc(database!, 'quizzes', quizId);
+    if (!firestore) {
+      throw new Error('Firestore not initialized');
+    }
+    
+    const quizRef = doc(collection(firestore, 'quizzes'), quizId);
     const quizDoc = await getDoc(quizRef);
     
     if (!quizDoc.exists()) {
