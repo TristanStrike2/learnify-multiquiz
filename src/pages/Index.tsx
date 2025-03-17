@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { useGenerateCourse } from '@/lib/hooks';
 import ModuleContent from '@/components/ModuleContent';
@@ -38,6 +38,11 @@ export function IndexPage() {
   const navigate = useNavigate();
   const [content, setContent] = useState('');
   const [showNameInput, setShowNameInput] = useState(false);
+
+  // Reset everything when the page mounts
+  useEffect(() => {
+    handleReset();
+  }, []);
 
   const handleGenerateCourse = async (text: string) => {
     setContent(text);
