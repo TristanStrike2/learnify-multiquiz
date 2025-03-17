@@ -4,7 +4,7 @@ import { useGenerateCourse } from '@/lib/hooks';
 import ModuleContent from '@/components/ModuleContent';
 import ModuleList from '@/components/ModuleList';
 import TextInput from '@/components/TextInput';
-import QuizGenerator from '@/components/QuizGenerator';
+import { QuizGenerator } from '@/components/QuizGenerator';
 import QuizQuestion from '@/components/QuizQuestion';
 import QuizResults from '@/components/QuizResults';
 import { GraduationCap, Share2, Loader2 } from 'lucide-react';
