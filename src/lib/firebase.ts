@@ -130,16 +130,48 @@ export async function getSharedQuiz(quizId: string) {
 export async function submitQuizResults(quizId: string, userName: string, results: any) {
   try {
     const db = ensureFirestore();
-    const submissionRef = doc(collection(db, `quizzes/${quizId}/submissions`), `${Date.now()}_${userName}`);
+    
+    // First get the quiz data to ensure it exists
+    const quiz = await getSharedQuiz(quizId);
+    if (!quiz) {
+      throw new Error('Quiz not found');
+    }
+
+    // Validate and structure the results data
+    if (!results || typeof results !== 'object') {
+      throw new Error('Invalid results data');
+    }
+
+    // Handle both flat and nested result structures
+    const moduleResults = Object.values(results)[0] || results;
+    
+    if (!moduleResults || typeof moduleResults !== 'object') {
+      throw new Error('Invalid module results data');
+    }
+
+    // Create a properly structured submission document
     const submissionData = {
       userName,
       timestamp: serverTimestamp(),
       results: {
-        ...results,
+        moduleId: moduleResults.moduleId,
+        totalQuestions: moduleResults.totalQuestions,
+        correctAnswers: moduleResults.correctAnswers,
+        incorrectAnswers: moduleResults.incorrectAnswers,
+        questionsWithAnswers: moduleResults.questionsWithAnswers || [],
+        courseName: quiz.courseName,
         submittedAt: serverTimestamp()
       }
     };
-    
+
+    // Validate required fields
+    const requiredFields = ['moduleId', 'totalQuestions', 'correctAnswers', 'incorrectAnswers'];
+    const missingFields = requiredFields.filter(field => !moduleResults[field]);
+    if (missingFields.length > 0) {
+      throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
+    }
+
+    const submissionRef = doc(collection(db, `quizzes/${quizId}/submissions`), `${Date.now()}_${userName}`);
     await setDoc(submissionRef, submissionData);
     return true;
   } catch (error) {
@@ -188,84 +220,4 @@ export async function deleteQuizSubmission(quizId: string, submissionId: string)
     console.error('Error deleting quiz submission:', error);
     throw error;
   }
-}
-
-// Enhanced database check with detailed error
-const checkDatabase = () => {
-  if (!firestoreDb) {
-    const error = window._firebaseInitError || new Error('Firebase not initialized');
-    console.error('Database check failed:', {
-      hasFirestore: !!firestoreDb,
-      config: window._firebaseConfig,
-      error
-    });
-    throw error;
-  }
-};
-
-// Enhanced retry operation with better error handling
-const retryOperation = async (operation: () => Promise<any>, maxAttempts = 3, delay = 1000) => {
-  let lastError;
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    try {
-      // Check Firebase initialization
-      if (!firestoreDb) {
-        console.log('Firebase services not initialized, attempting to initialize...');
-        await initializeFirebase();
-      }
-
-      const result = await operation();
-      console.log('Operation succeeded after attempt', attempt);
-      return result;
-    } catch (error: any) {
-      lastError = error;
-      console.error(`Operation failed (attempt ${attempt}/${maxAttempts}):`, {
-        error: {
-          message: error.message,
-          code: error.code,
-          name: error.name
-        },
-        stack: error instanceof Error ? error.stack : undefined,
-        details: error.details || error.serverResponse || undefined
-      });
-      
-      // Check if error is due to network/connection issues
-      if (error.code === 'unavailable' || error.code === 'network-request-failed') {
-        console.log('Network error detected, waiting longer before retry...');
-        delay *= 2; // Double the delay for network issues
-      }
-      
-      if (attempt < maxAttempts) {
-        const backoffDelay = Math.min(delay * Math.pow(2, attempt - 1), 10000); // Cap at 10 seconds
-        console.log(`Waiting ${backoffDelay}ms before retry...`);
-        await new Promise(resolve => setTimeout(resolve, backoffDelay));
-      }
-    }
-  }
-  throw lastError;
-};
-
-// Store quiz submission
-export const storeQuizSubmission = async (
-  quizId: string,
-  userName: string,
-  results: any
-) => {
-  return retryOperation(async () => {
-    checkDatabase();
-    const quiz = await getSharedQuiz(quizId);
-    const submissionRef = doc(collection(firestoreDb, `quizzes/${quizId}/submissions`), `${Date.now()}_${userName}`);
-    const submissionData = {
-      userName,
-      timestamp: Date.now(),
-      results: {
-        ...results,
-        modules: quiz?.modules || [],
-        courseName: quiz?.courseName || 'Quiz Results'
-      }
-    };
-    
-    await setDoc(submissionRef, submissionData);
-    return true;
-  });
-}; 
+} 
