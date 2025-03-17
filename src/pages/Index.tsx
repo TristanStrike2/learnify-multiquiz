@@ -234,9 +234,7 @@ export function IndexPage() {
   };
 
   const handleReset = () => {
-    // Clear the course first
-    generateCourse('');
-    // Then reset all other state
+    // Reset all state without triggering loading
     setCurrentModuleIndex(0);
     setShowModuleContent(false);
     setModuleResults({});
@@ -247,6 +245,7 @@ export function IndexPage() {
     });
     setUserName('');
     setContent('');
+    setCourse(null);
   };
 
   const handleShare = async () => {

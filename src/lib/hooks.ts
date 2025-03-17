@@ -442,6 +442,11 @@ export const useGenerateCourse = () => {
   const navigate = useNavigate();
 
   const generateCourse = async (text: string): Promise<boolean> => {
+    // Don't do anything if empty text is passed
+    if (!text.trim()) {
+      return false;
+    }
+
     try {
       // Set loading state before starting generation
       setIsLoading(true);
