@@ -1,75 +1,63 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import { useToast } from '@/components/ui/use-toast';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Settings } from 'lucide-react';
+import { QuizSettingsDialog } from './QuizSettingsDialog';
+import { useQuizSettings } from '@/lib/store';
 
 interface QuizGeneratorProps {
-  onGenerate: (text: string) => Promise<void>;
-  isLoading?: boolean;
+  onSubmit: (text: string) => Promise<void>;
+  isLoading: boolean;
 }
 
-export default function QuizGenerator({ onGenerate, isLoading = false }: QuizGeneratorProps) {
+export function QuizGenerator({ onSubmit, isLoading }: QuizGeneratorProps) {
   const [text, setText] = useState('');
-  const { toast } = useToast();
+  const [showSettings, setShowSettings] = useState(false);
+  const { numberOfQuestions } = useQuizSettings();
 
   const handleSubmit = async () => {
-    const trimmedText = text.trim();
-    if (!trimmedText) {
-      toast({
-        title: 'Error',
-        description: 'Please enter some text content to generate a quiz.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    if (trimmedText.length < 100) {
-      toast({
-        title: 'Error',
-        description: 'Please enter at least 100 characters of text to generate a meaningful quiz.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    await onGenerate(trimmedText);
+    if (text.length < 100) return;
+    await onSubmit(text);
   };
 
   return (
-    <Card className="p-6">
-      <div className="space-y-4">
-        <div className="space-y-2">
-          <h2 className="text-lg font-semibold">Generate Quiz</h2>
-          <p className="text-sm text-muted-foreground">
-            Enter your educational content below, and we'll generate a quiz for you.
-          </p>
-        </div>
-        <Textarea
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder="Enter your educational content here (minimum 100 characters)..."
-          className="min-h-[200px]"
-          disabled={isLoading}
-        />
-        <div className="flex justify-end">
-          <Button
-            onClick={handleSubmit}
-            disabled={isLoading || text.trim().length < 100}
-            className="px-6"
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Generating Quiz...
-              </>
-            ) : (
-              'Submit Content'
-            )}
-          </Button>
-        </div>
+    <div className="space-y-4 w-full max-w-4xl mx-auto">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold">Generate Quiz</h2>
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => setShowSettings(true)}
+          className="hover:bg-purple-50 dark:hover:bg-purple-900/20"
+        >
+          <Settings className="h-5 w-5" />
+        </Button>
       </div>
-    </Card>
+      <Textarea
+        placeholder={`Enter your text here (minimum 100 characters).\nThis will generate ${numberOfQuestions} questions.`}
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        className="min-h-[200px] resize-none"
+        disabled={isLoading}
+      />
+      <Button
+        onClick={handleSubmit}
+        disabled={text.length < 100 || isLoading}
+        className="w-full"
+      >
+        {isLoading ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Generating Quiz...
+          </>
+        ) : (
+          'Submit Content'
+        )}
+      </Button>
+      <QuizSettingsDialog
+        open={showSettings}
+        onOpenChange={setShowSettings}
+      />
+    </div>
   );
 }

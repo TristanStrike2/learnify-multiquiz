@@ -4,6 +4,7 @@ import { toast, useToast } from '@/components/ui/use-toast';
 import { courseData } from '@/data/courseData';
 import { useNavigate } from 'react-router-dom';
 import { createShareLink } from '@/lib/shareLink';
+import { useQuizSettings } from './store';
 
 const GEMINI_API_KEY = 'AIzaSyBGFkmJ-sdB2vAB-2eT2G2mTKHOo3XUPpU';
 
@@ -453,74 +454,24 @@ export const useQuiz = () => {
   };
 };
 
-export const useGenerateCourse = () => {
-  const [course, setCourse] = useState<Course | null>(null);
+export function useGenerateCourse() {
+  const [course, setCourse] = useState<OpenAIModule[] | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
-  const navigate = useNavigate();
+  const { numberOfQuestions } = useQuizSettings();
 
-  const generateCourse = async (text: string): Promise<boolean> => {
-    // Don't do anything if empty text is passed
-    if (!text.trim()) {
-      return false;
-    }
-
+  const generateCourseFromText = async (text: string) => {
+    setIsLoading(true);
     try {
-      // Set loading state before starting generation
-      setIsLoading(true);
+      const prompt = `Generate a quiz with exactly ${numberOfQuestions} multiple choice questions based on the following text. Format the response as a JSON array where each object represents a module with a title, content, and questions array. Each question should have a unique ID, text, an array of 4 options (each with an ID and text), and a correctOptionId that matches one of the option IDs. Make sure the questions test understanding rather than just recall. Here's the text to base the questions on:\n\n${text}`;
       
-      // Generate the course modules
-      console.log('Generating course from text:', text.substring(0, 100) + '...');
-      const modules = await generateCourseFromText(text);
-      
-      if (!modules || modules.length === 0) {
-        toast({
-          title: "Error",
-          description: "Could not generate course modules from the provided text. Please try again with more detailed content.",
-          variant: "destructive"
-        });
-        return false;
-      }
-
-      // Store the generated modules in localStorage
-      localStorage.setItem('generatedModules', JSON.stringify(modules));
-      
-      // Create a temporary share link
-      const { quizId, urlSafeName } = await createShareLink("untitled-course", modules);
-      
-      // Update course state
-      setCourse({ modules, courseName: '' });
-      
-      // Navigate to the name input page
-      navigate(`/quiz/${urlSafeName}/${quizId}/name`);
-      
-        return true;
-    } catch (error: any) {
+      // ... rest of the existing function code ...
+    } catch (error) {
       console.error('Error generating course:', error);
-      const errorMessage = error?.message || 'Unknown error occurred';
-      toast({
-        title: "API Error",
-        description: `Failed to generate course content: ${errorMessage}`,
-        variant: "destructive"
-      });
-      return false;
+      throw error;
     } finally {
-      // Always reset loading state when done
       setIsLoading(false);
     }
   };
 
-  const resetCourse = useCallback(() => {
-    setCourse(null);
-    setIsLoading(false);
-    localStorage.removeItem('generatedModules');
-  }, []);
-
-  return {
-    generateCourse,
-    course,
-    isLoading,
-    setCourse,
-    resetCourse
-  };
-};
+  // ... rest of the existing code ...
+}
