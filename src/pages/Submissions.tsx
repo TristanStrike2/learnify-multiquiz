@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { generateSubmissionReport, generatePDF } from '@/lib/pdfGenerator';
-import { Download, Share2, Copy, CheckCircle2, FileText, User, Calendar, Trophy, PlusCircle, Trash2 } from 'lucide-react';
+import { Download, Share2, Copy, CheckCircle2, FileText, User, Calendar, Trophy, PlusCircle, Trash2, Eye } from 'lucide-react';
 import { format } from 'date-fns';
 import { useToast } from '@/components/ui/use-toast';
 import { Progress } from '@/components/ui/progress';
@@ -84,6 +84,124 @@ function getValidDate(timestamp: any): Date {
   return new Date();
 }
 
+function QuizResultsModal({ 
+  submission, 
+  isOpen, 
+  onClose 
+}: { 
+  submission: QuizSubmission | null;
+  isOpen: boolean;
+  onClose: () => void;
+}) {
+  if (!submission) return null;
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden bg-gradient-to-br from-white to-purple-50/30 dark:from-background dark:to-purple-950/10">
+        <DialogHeader>
+          <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent flex items-center gap-2">
+            <User className="h-5 w-5" />
+            {submission.userName}'s Quiz Results
+          </DialogTitle>
+          <DialogDescription className="text-muted-foreground">
+            Completed on {format(getValidDate(submission.timestamp), 'PPP')}
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div className="space-y-4">
+          <div className="flex items-center justify-between p-4 rounded-lg bg-gradient-to-br from-purple-50 to-white dark:from-purple-950/20 dark:to-background border border-purple-100 dark:border-purple-900/50">
+            <div>
+              <p className="font-medium text-purple-800 dark:text-purple-200">Overall Score</p>
+              <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+                {submission.results.correctAnswers} / {submission.results.totalQuestions}
+              </p>
+            </div>
+            <div>
+              <p className="font-medium text-purple-800 dark:text-purple-200">Percentage</p>
+              <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+                {Math.round((submission.results.correctAnswers / submission.results.totalQuestions) * 100)}%
+              </p>
+            </div>
+          </div>
+
+          <ScrollArea className="h-[50vh] pr-4">
+            {submission.results.modules.map((module, moduleIndex) => (
+              <div key={module.id} className="mb-8">
+                <h3 className="text-lg font-semibold mb-4 text-purple-800 dark:text-purple-200">
+                  Module {moduleIndex + 1}: {module.title}
+                </h3>
+                
+                <div className="space-y-6">
+                  {submission.results.questionsWithAnswers.map((qa, index) => {
+                    const selectedOption = qa.question.options.find(opt => opt.id === qa.selectedOptionId);
+                    const correctOption = qa.question.options.find(opt => opt.id === qa.question.correctOptionId);
+                    
+                    return (
+                      <Card key={index} className="border-l-4 overflow-hidden transition-all duration-200">
+                        <CardHeader className="bg-gradient-to-br from-gray-50 to-white dark:from-gray-950/20 dark:to-background">
+                          <div className="flex items-start justify-between">
+                            <CardTitle className="text-base">
+                              Question {index + 1}: {qa.question.text}
+                            </CardTitle>
+                            {qa.isTimeout ? (
+                              <span className="px-2 py-1 rounded text-sm bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-200">
+                                Timed Out
+                              </span>
+                            ) : qa.isCorrect ? (
+                              <span className="px-2 py-1 rounded text-sm bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200">
+                                Correct
+                              </span>
+                            ) : (
+                              <span className="px-2 py-1 rounded text-sm bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200">
+                                Incorrect
+                              </span>
+                            )}
+                          </div>
+                        </CardHeader>
+                        <CardContent className="pt-4">
+                          <div className="space-y-2">
+                            {qa.question.options.map((option) => (
+                              <div
+                                key={option.id}
+                                className={`p-3 rounded-lg border ${
+                                  option.id === qa.question.correctOptionId
+                                    ? 'bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800'
+                                    : option.id === qa.selectedOptionId && !qa.isCorrect
+                                    ? 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800'
+                                    : 'bg-white dark:bg-background border-gray-200 dark:border-gray-800'
+                                }`}
+                              >
+                                <div className="flex items-center justify-between">
+                                  <span className={`${
+                                    option.id === qa.question.correctOptionId
+                                      ? 'text-green-800 dark:text-green-200'
+                                      : option.id === qa.selectedOptionId && !qa.isCorrect
+                                      ? 'text-red-800 dark:text-red-200'
+                                      : ''
+                                  }`}>
+                                    {option.text}
+                                  </span>
+                                  {option.id === qa.question.correctOptionId && (
+                                    <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </ScrollArea>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export function SubmissionsPage() {
   const { quizId, userName, courseName } = useParams();
   const location = useLocation();
@@ -95,6 +213,7 @@ export function SubmissionsPage() {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [quiz, setQuiz] = useState<any>(null);
+  const [selectedSubmission, setSelectedSubmission] = useState<QuizSubmission | null>(null);
   
   // More robust admin check
   const isAdmin = useMemo(() => {
@@ -334,6 +453,10 @@ export function SubmissionsPage() {
     }
   };
 
+  const handleViewResults = (submission: QuizSubmission) => {
+    setSelectedSubmission(submission);
+  };
+
   return (
     <div className="container max-w-7xl mx-auto py-8 px-4">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
@@ -508,14 +631,22 @@ export function SubmissionsPage() {
                     </div>
                   </div>
                 </CardContent>
-                <CardFooter className="bg-gradient-to-br from-gray-50 to-white dark:from-gray-950/20 dark:to-background border-t flex justify-center p-4">
+                <CardFooter className="bg-gradient-to-br from-gray-50 to-white dark:from-gray-950/20 dark:to-background border-t flex justify-center gap-2 p-4">
+                  <Button 
+                    variant="outline" 
+                    className="w-auto px-6 hover:bg-purple-50 dark:hover:bg-purple-900/20 hover:text-purple-600 dark:hover:text-purple-400 transition-colors"
+                    onClick={() => handleViewResults(submission)}
+                  >
+                    <Eye className="mr-2 h-4 w-4" />
+                    View Results
+                  </Button>
                   <Button 
                     variant="outline" 
                     className="w-auto px-6 hover:bg-purple-50 dark:hover:bg-purple-900/20 hover:text-purple-600 dark:hover:text-purple-400 transition-colors"
                     onClick={() => handleDownloadUserPDF(submission)}
                   >
                     <FileText className="mr-2 h-4 w-4" />
-                    Download Results PDF
+                    Download PDF
                   </Button>
                 </CardFooter>
               </Card>
@@ -582,6 +713,12 @@ export function SubmissionsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <QuizResultsModal
+        submission={selectedSubmission}
+        isOpen={!!selectedSubmission}
+        onClose={() => setSelectedSubmission(null)}
+      />
     </div>
   );
 }
