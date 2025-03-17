@@ -1,15 +1,4 @@
 {
-  "indexes": [
-    {
-      "collectionGroup": "submissions",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "timestamp",
-          "order": "DESCENDING"
-        }
-      ]
-    }
-  ],
+  "indexes": [],
   "fieldOverrides": []
 } 
