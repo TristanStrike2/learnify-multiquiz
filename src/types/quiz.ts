@@ -18,8 +18,9 @@ export interface Module {
 }
 
 export interface Course {
-  courseName: string;
   modules: Module[];
+  numberOfQuestions: number;
+  courseName?: string;
 }
 
 export interface QuizResult {
@@ -32,6 +33,7 @@ export interface QuizResult {
     isCorrect: boolean;
   }>;
   moduleId: string;
+  numberOfQuestions?: number;
 }
 
 export type QuizState = 
