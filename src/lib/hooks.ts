@@ -16,7 +16,7 @@ const generateCourseFromText = async (text: string, retryCount = 0): Promise<Mod
     // Make the prompt even more explicit about needing 30 questions
     const requestBody = JSON.stringify({
       contents: [{
-        parts: [{
+            parts: [{
           text: `Transform this text into a comprehensive quiz:
 
 ${text}
@@ -30,12 +30,12 @@ Format your response as a JSON array with this exact structure:
 [
   {
     "title": "Quiz Title",
-    "content": "Educational content that teaches the topic in a clear way...",
-    "questions": [
-      {
-        "question": "Question text",
-        "options": ["option1", "option2", "option3", "option4"],
-        "correctAnswerIndex": 0
+                  "content": "Educational content that teaches the topic in a clear way...",
+                  "questions": [
+                    {
+                      "question": "Question text",
+                      "options": ["option1", "option2", "option3", "option4"],
+                      "correctAnswerIndex": 0
       }
       // IMPORTANT: Include all 30 questions here - exactly 30, no more, no less
     ]
@@ -55,8 +55,8 @@ CRITICAL REQUIREMENTS:
 Failure to comply with the exact question count will require regeneration.`
         }]
       }],
-      generationConfig: {
-        temperature: 0.7,
+        generationConfig: {
+          temperature: 0.7,
         maxOutputTokens: 12000
       }
     });
@@ -74,7 +74,7 @@ Failure to comply with the exact question count will require regeneration.`
     });
 
     console.log('Response status:', response.status, response.statusText);
-    
+
     if (!response.ok) {
       const errorData = await response.json();
       console.error('Gemini API error details:', errorData);
@@ -90,19 +90,37 @@ Failure to comply with the exact question count will require regeneration.`
     
     // Parse the content from Gemini response
     const content = data.candidates[0].content.parts[0].text;
-    console.log('Extracted content:', content);
+    console.log('Raw response content:', content);
     
-    // Extract JSON from response
+    // Clean up the content before parsing
+    const cleanedContent = content
+      .replace(/[\u0000-\u001F\u007F-\u009F]/g, '') // Remove control characters
+      .replace(/\\[^"\\\/bfnrtu]/g, '\\\\$&') // Escape unescaped backslashes
+      .replace(/([{,]\s*)(\w+)\s*:/g, '$1"$2":') // Add quotes to unquoted property names
+      .replace(/\n/g, '\\n'); // Handle newlines
+    
+    console.log('Cleaned content:', cleanedContent);
+    
+    // Try multiple parsing strategies
     let parsedModules;
     try {
-      parsedModules = JSON.parse(content) as OpenAIModule[];
-    } catch (e) {
-      // Try to find JSON in the response if direct parsing fails
-      const jsonMatch = content.match(/\[\s*\{.*\}\s*\]/s);
-      if (!jsonMatch) {
-        throw new Error('Could not extract valid JSON from response');
+      // First try: direct parse of cleaned content
+      parsedModules = JSON.parse(cleanedContent) as OpenAIModule[];
+    } catch (e1) {
+      console.warn('First parse attempt failed:', e1);
+      try {
+        // Second try: find JSON array in the content
+        const jsonMatch = cleanedContent.match(/\[\s*\{[\s\S]*\}\s*\]/);
+        if (!jsonMatch) {
+          throw new Error('Could not find JSON array in response');
+        }
+        parsedModules = JSON.parse(jsonMatch[0]) as OpenAIModule[];
+      } catch (e2) {
+        console.error('All JSON parsing attempts failed');
+        console.error('Original content:', content);
+        console.error('Cleaned content:', cleanedContent);
+        throw new Error('Failed to parse Gemini response as JSON. Please try again.');
       }
-      parsedModules = JSON.parse(jsonMatch[0]) as OpenAIModule[];
     }
     
     console.log('Parsed modules:', parsedModules);
@@ -199,12 +217,12 @@ Failure to comply with the exact question count will require regeneration.`
         return generateCourseFromText(text, retryCount + 1);
       }
     }
-    
-    // Convert Gemini format to our Module format
-    return parsedModules.map((m, moduleIndex) => ({
+      
+      // Convert Gemini format to our Module format
+      return parsedModules.map((m, moduleIndex) => ({
       id: `module${moduleIndex + 1}`,
-      title: m.title,
-      content: m.content,
+        title: m.title,
+        content: m.content,
       questions: m.questions.map((q, questionIndex) => {
         // Create array of all options
         const allOptions = [...q.options];
@@ -234,7 +252,7 @@ Failure to comply with the exact question count will require regeneration.`
           correctOptionId: String.fromCharCode(65 + randomPosition) // A, B, C, D based on where we inserted the correct option
         };
       })
-    }));
+      }));
   } catch (error) {
     console.error('Error generating course:', error);
     throw error;
@@ -463,7 +481,7 @@ export const useGenerateCourse = () => {
         });
         return false;
       }
-      
+
       // Store the generated modules in localStorage
       localStorage.setItem('generatedModules', JSON.stringify(modules));
       
@@ -476,7 +494,7 @@ export const useGenerateCourse = () => {
       // Navigate to the name input page
       navigate(`/quiz/${urlSafeName}/${quizId}/name`);
       
-      return true;
+        return true;
     } catch (error: any) {
       console.error('Error generating course:', error);
       const errorMessage = error?.message || 'Unknown error occurred';
