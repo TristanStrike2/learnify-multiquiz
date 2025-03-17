@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { subscribeToQuizSubmissions, getSharedQuiz, deleteQuizSubmission } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
@@ -61,7 +61,22 @@ export function SubmissionsPage() {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [quiz, setQuiz] = useState<any>(null);
-  const isAdmin = location.pathname.includes('/results/admin');
+  
+  // More robust admin check
+  const isAdmin = useMemo(() => {
+    const path = location.pathname;
+    console.log('Checking admin status for path:', path);
+    const isAdminRoute = path.endsWith('/results/admin');
+    console.log('Is admin route?', isAdminRoute);
+    return isAdminRoute;
+  }, [location.pathname]);
+
+  // Debug effect
+  useEffect(() => {
+    console.log('Current path:', location.pathname);
+    console.log('Admin status:', isAdmin);
+    console.log('URL params:', { quizId, userName, courseName });
+  }, [location.pathname, isAdmin, quizId, userName, courseName]);
 
   useEffect(() => {
     if (!quizId) return;
