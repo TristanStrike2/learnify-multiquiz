@@ -87,13 +87,14 @@ export function IndexPage() {
 
     try {
       // Update course with name
-      setCourse({
+      const updatedCourse = {
         ...course,
         courseName
-      });
+      };
+      setCourse(updatedCourse);
 
       // Create share link and navigate to submissions
-      const { quizId, urlSafeName } = await createShareLink(courseName, course.modules);
+      const { quizId, urlSafeName } = await createShareLink(courseName, updatedCourse.modules);
       
       // Clear any stored state before navigating
       localStorage.removeItem('currentCourse');
@@ -353,10 +354,29 @@ export function IndexPage() {
   return (
     <div className="container max-w-7xl mx-auto py-8 px-4">
       {!course ? (
-        <QuizGenerator
-          onSubmit={handleGenerateCourse}
-          isLoading={isLoading}
-        />
+        <>
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+            <div>
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+                Create New Quiz
+              </h1>
+              <p className="text-muted-foreground mt-2 text-lg">
+                Generate a quiz from any text or content
+              </p>
+            </div>
+            <Button 
+              onClick={() => navigate('/')}
+              variant="outline"
+              className="hover:bg-purple-50 dark:hover:bg-purple-900/20"
+            >
+              Back to Quiz Management
+            </Button>
+          </div>
+          <QuizGenerator
+            onSubmit={handleGenerateCourse}
+            isLoading={isLoading}
+          />
+        </>
       ) : showNameInput ? (
         <div className="container max-w-xl mx-auto py-12">
           <Card className="shadow-lg">

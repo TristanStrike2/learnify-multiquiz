@@ -458,7 +458,7 @@ export const useQuiz = () => {
 };
 
 export function useGenerateCourse() {
-  const [course, setCourse] = useState<OpenAIModule[] | null>(null);
+  const [course, setCourse] = useState<Course | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { numberOfQuestions } = getQuizSettings();
   const navigate = useNavigate();
@@ -591,14 +591,33 @@ ${text}`;
         throw new Error(`Invalid question count. Expected ${numberOfQuestions}, got ${questions?.length || 0}`);
       }
 
-      // Store the generated modules in localStorage
-      localStorage.setItem('generatedModules', JSON.stringify(parsedModules));
+      // Convert OpenAIModule[] to Course
+      const convertedCourse: Course = {
+        modules: parsedModules.map((m, moduleIndex) => ({
+          id: `module${moduleIndex + 1}`,
+          title: m.title,
+          content: m.content,
+          questions: m.questions.map((q, questionIndex) => ({
+            id: `q${questionIndex + 1}`,
+            text: q.question,
+            options: q.options.map((opt, i) => ({
+              id: String.fromCharCode(65 + i), // A, B, C, D
+              text: opt
+            })),
+            correctOptionId: String.fromCharCode(65 + q.correctAnswerIndex) // A, B, C, D
+          }))
+        })),
+        numberOfQuestions
+      };
+
+      // Store the generated course in localStorage
+      localStorage.setItem('generatedModules', JSON.stringify(convertedCourse));
       
       // Create a temporary share link
-      const { quizId, urlSafeName } = await createShareLink("untitled-course", parsedModules);
+      const { quizId, urlSafeName } = await createShareLink("untitled-course", convertedCourse.modules);
       
       // Update course state
-      setCourse(parsedModules);
+      setCourse(convertedCourse);
       
       // Navigate to the name input page
       navigate(`/quiz/${urlSafeName}/${quizId}/name`);
