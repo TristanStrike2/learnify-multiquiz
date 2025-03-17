@@ -15,39 +15,42 @@ const generateCourseFromText = async (text: string, retryCount = 0): Promise<Mod
     const requestBody = JSON.stringify({
       contents: [{
         parts: [{
-          text: `Transform this text into a comprehensive quiz: "${text}". 
-          The quiz must have:
-          1. A clear, descriptive title
-          2. Educational content (400-600 words)
-          3. EXACTLY 30 multiple-choice quiz questions - This is a strict requirement!
+          text: `Transform this text into a comprehensive quiz:
 
-          Format your response as a JSON array with this exact structure:
-          [
-            {
-              "title": "Quiz Title",
-              "content": "Educational content that teaches the topic in a clear way...",
-              "questions": [
-                {
-                  "question": "Question text",
-                  "options": ["option1", "option2", "option3", "option4"],
-                  "correctAnswerIndex": 0
-                }
-                // IMPORTANT: Include all 30 questions here - exactly 30, no more, no less
-              ]
-            }
-          ]
-          
-          CRITICAL REQUIREMENTS:
-          - Generate EXACTLY 1 quiz module
-          - The quiz MUST have EXACTLY 30 questions - count carefully! This is a very strict requirement!
-          - Each question MUST have EXACTLY 4 options - This is a very strict requirement!
-          - Questions should test evaluation, anlysis, application and understading. Use Bloom's Taxonomy to ensure the questions are appropriate. 
-          - Content should be educational and well-structured
-          - Return ONLY the valid JSON array with no additional text
-          - All content must directly relate to the input text
-          - Questions should progressively increase in difficulty
-          
-          Failure to comply with the exact question count will require regeneration.`
+${text}
+
+The quiz must have:
+1. A clear, descriptive title
+2. Educational content (400-600 words)
+3. EXACTLY 30 multiple-choice quiz questions - This is a strict requirement!
+
+Format your response as a JSON array with this exact structure:
+[
+  {
+    "title": "Quiz Title",
+    "content": "Educational content that teaches the topic in a clear way...",
+    "questions": [
+      {
+        "question": "Question text",
+        "options": ["option1", "option2", "option3", "option4"],
+        "correctAnswerIndex": 0
+      }
+      // IMPORTANT: Include all 30 questions here - exactly 30, no more, no less
+    ]
+  }
+]
+
+CRITICAL REQUIREMENTS:
+- Generate EXACTLY 1 quiz module
+- The quiz MUST have EXACTLY 30 questions - count carefully! This is a very strict requirement!
+- Each question MUST have EXACTLY 4 options - This is a very strict requirement!
+- Questions should test evaluation, analysis, application and understanding. Use Bloom's Taxonomy to ensure the questions are appropriate.
+- Content should be educational and well-structured
+- Return ONLY the valid JSON array with no additional text
+- All content must directly relate to the input text
+- Questions should progressively increase in difficulty
+
+Failure to comply with the exact question count will require regeneration.`
         }]
       }],
       generationConfig: {
