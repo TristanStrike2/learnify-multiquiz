@@ -95,6 +95,30 @@ function QuizResultsModal({
 }) {
   if (!submission) return null;
 
+  // Validate submission data
+  const hasValidData = submission.results && 
+    submission.results.questionsWithAnswers && 
+    Array.isArray(submission.results.questionsWithAnswers) &&
+    submission.results.questionsWithAnswers.length > 0;
+
+  if (!hasValidData) {
+    return (
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="bg-gradient-to-br from-white to-purple-50/30 dark:from-background dark:to-purple-950/10">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent flex items-center gap-2">
+              <User className="h-5 w-5" />
+              {submission.userName}'s Quiz Results
+            </DialogTitle>
+            <DialogDescription className="text-destructive">
+              Error: Unable to load quiz results. The data appears to be incomplete or corrupted.
+            </DialogDescription>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden bg-gradient-to-br from-white to-purple-50/30 dark:from-background dark:to-purple-950/10">
@@ -125,76 +149,68 @@ function QuizResultsModal({
           </div>
 
           <ScrollArea className="h-[50vh] pr-4">
-            {submission.results.modules.map((module, moduleIndex) => (
-              <div key={module.id} className="mb-8">
-                <h3 className="text-lg font-semibold mb-4 text-purple-800 dark:text-purple-200">
-                  Module {moduleIndex + 1}: {module.title}
-                </h3>
+            <div className="space-y-6">
+              {submission.results.questionsWithAnswers.map((qa, index) => {
+                const selectedOption = qa.question.options.find(opt => opt.id === qa.selectedOptionId);
+                const correctOption = qa.question.options.find(opt => opt.id === qa.question.correctOptionId);
                 
-                <div className="space-y-6">
-                  {submission.results.questionsWithAnswers.map((qa, index) => {
-                    const selectedOption = qa.question.options.find(opt => opt.id === qa.selectedOptionId);
-                    const correctOption = qa.question.options.find(opt => opt.id === qa.question.correctOptionId);
-                    
-                    return (
-                      <Card key={index} className="border-l-4 overflow-hidden transition-all duration-200">
-                        <CardHeader className="bg-gradient-to-br from-gray-50 to-white dark:from-gray-950/20 dark:to-background">
-                          <div className="flex items-start justify-between">
-                            <CardTitle className="text-base">
-                              Question {index + 1}: {qa.question.text}
-                            </CardTitle>
-                            {qa.isTimeout ? (
-                              <span className="px-2 py-1 rounded text-sm bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-200">
-                                Timed Out
+                return (
+                  <Card key={index} className="border-l-4 overflow-hidden transition-all duration-200">
+                    <CardHeader className="bg-gradient-to-br from-gray-50 to-white dark:from-gray-950/20 dark:to-background">
+                      <div className="flex items-start justify-between">
+                        <CardTitle className="text-base">
+                          Question {index + 1}: {qa.question.text}
+                        </CardTitle>
+                        {qa.isTimeout ? (
+                          <span className="px-2 py-1 rounded text-sm bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-200">
+                            Timed Out
+                          </span>
+                        ) : qa.isCorrect ? (
+                          <span className="px-2 py-1 rounded text-sm bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200">
+                            Correct
+                          </span>
+                        ) : (
+                          <span className="px-2 py-1 rounded text-sm bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200">
+                            Incorrect
+                          </span>
+                        )}
+                      </div>
+                    </CardHeader>
+                    <CardContent className="pt-4">
+                      <div className="space-y-2">
+                        {qa.question.options.map((option) => (
+                          <div
+                            key={option.id}
+                            className={`p-3 rounded-lg border ${
+                              option.id === qa.question.correctOptionId
+                                ? 'bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800'
+                                : option.id === qa.selectedOptionId && !qa.isCorrect
+                                ? 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800'
+                                : 'bg-white dark:bg-background border-gray-200 dark:border-gray-800'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className={`${
+                                option.id === qa.question.correctOptionId
+                                  ? 'text-green-800 dark:text-green-200'
+                                  : option.id === qa.selectedOptionId && !qa.isCorrect
+                                  ? 'text-red-800 dark:text-red-200'
+                                  : ''
+                              }`}>
+                                {option.text}
                               </span>
-                            ) : qa.isCorrect ? (
-                              <span className="px-2 py-1 rounded text-sm bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200">
-                                Correct
-                              </span>
-                            ) : (
-                              <span className="px-2 py-1 rounded text-sm bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200">
-                                Incorrect
-                              </span>
-                            )}
+                              {option.id === qa.question.correctOptionId && (
+                                <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
+                              )}
+                            </div>
                           </div>
-                        </CardHeader>
-                        <CardContent className="pt-4">
-                          <div className="space-y-2">
-                            {qa.question.options.map((option) => (
-                              <div
-                                key={option.id}
-                                className={`p-3 rounded-lg border ${
-                                  option.id === qa.question.correctOptionId
-                                    ? 'bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800'
-                                    : option.id === qa.selectedOptionId && !qa.isCorrect
-                                    ? 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800'
-                                    : 'bg-white dark:bg-background border-gray-200 dark:border-gray-800'
-                                }`}
-                              >
-                                <div className="flex items-center justify-between">
-                                  <span className={`${
-                                    option.id === qa.question.correctOptionId
-                                      ? 'text-green-800 dark:text-green-200'
-                                      : option.id === qa.selectedOptionId && !qa.isCorrect
-                                      ? 'text-red-800 dark:text-red-200'
-                                      : ''
-                                  }`}>
-                                    {option.text}
-                                  </span>
-                                  {option.id === qa.question.correctOptionId && (
-                                    <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
-                                  )}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
           </ScrollArea>
         </div>
       </DialogContent>
