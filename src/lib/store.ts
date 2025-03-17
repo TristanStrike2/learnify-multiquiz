@@ -1,19 +1,15 @@
-import { createStore } from 'zustand/vanilla';
-import { useStore } from 'zustand';
+import { create } from 'zustand';
 
 interface QuizSettings {
   numberOfQuestions: number;
   setNumberOfQuestions: (count: number) => void;
 }
 
-// Create a vanilla store
-const store = createStore<QuizSettings>((set) => ({
+// Create the store using standard Zustand
+export const useQuizSettings = create<QuizSettings>((set) => ({
   numberOfQuestions: 15,
   setNumberOfQuestions: (count: number) => set({ numberOfQuestions: count }),
 }));
 
-// Export a hook that uses the store
-export const useQuizSettings = () => useStore(store);
-
 // Export getState for non-component usage
-export const getQuizSettings = () => store.getState(); 
+export const getQuizSettings = () => useQuizSettings.getState(); 
