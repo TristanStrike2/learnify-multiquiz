@@ -470,7 +470,52 @@ export function useGenerateCourse() {
       setIsLoading(true);
       console.log('Generating course from text:', text.substring(0, 100) + '...');
       
-      const prompt = `Generate a quiz with exactly ${numberOfQuestions} multiple choice questions based on the following text. Format the response as a JSON array where each object represents a module with a title, content, and questions array. Each question should have a unique ID, text, an array of 4 options (each with an ID and text), and a correctOptionId that matches one of the option IDs. Make sure the questions test understanding rather than just recall. Here's the text to base the questions on:\n\n${text}`;
+      const prompt = `You are a quiz generator. Generate a quiz with exactly ${numberOfQuestions} multiple choice questions based on the following text. Return ONLY a JSON array with this exact structure, and nothing else:
+
+[
+  {
+    "title": "Quiz Title",
+    "content": "Educational content summary",
+    "questions": [
+      {
+        "id": "q1",
+        "text": "Question text",
+        "options": [
+          {
+            "id": "A",
+            "text": "First option"
+          },
+          {
+            "id": "B",
+            "text": "Second option"
+          },
+          {
+            "id": "C",
+            "text": "Third option"
+          },
+          {
+            "id": "D",
+            "text": "Fourth option"
+          }
+        ],
+        "correctOptionId": "A"
+      }
+    ]
+  }
+]
+
+Requirements:
+1. Generate exactly ${numberOfQuestions} questions
+2. Each question must have exactly 4 options
+3. Each option must have an id (A, B, C, or D) and text
+4. correctOptionId must match one of the option ids
+5. Return ONLY the JSON array, no other text
+6. Questions should test understanding rather than just recall
+7. Content should be educational and well-structured
+
+Here's the text to base the questions on:
+
+${text}`;
       
       const requestBody = JSON.stringify({
         contents: [{
@@ -508,26 +553,39 @@ export function useGenerateCourse() {
       const content = data.candidates[0].content.parts[0].text;
       console.log('Raw response content:', content);
       
-      const cleanedContent = content
-        .replace(/[\u0000-\u001F\u007F-\u009F]/g, '')
-        .replace(/\\[^"\\\/bfnrtu]/g, '\\\\$&')
-        .replace(/([{,]\s*)(\w+)\s*:/g, '$1"$2":')
-        .replace(/\n/g, '\\n');
+      // Extract JSON from the response
+      const jsonMatch = content.match(/\[\s*\{[\s\S]*\}\s*\]/);
+      if (!jsonMatch) {
+        throw new Error('Could not find JSON array in response');
+      }
+
+      // Clean the extracted JSON
+      const cleanedJson = jsonMatch[0]
+        .replace(/[\u0000-\u001F\u007F-\u009F]/g, '') // Remove control characters
+        .replace(/\\[^"\\\/bfnrtu]/g, '\\\\$&') // Escape unescaped backslashes
+        .replace(/([{,]\s*)(\w+)\s*:/g, '$1"$2":') // Add quotes to unquoted property names
+        .replace(/\n/g, '\\n') // Handle newlines
+        .replace(/```[^`]*```/g, '') // Remove any markdown code blocks
+        .replace(/^[^[]*(\[[\s\S]*\])[^]*$/, '$1'); // Extract just the JSON array
+
+      console.log('Cleaned JSON:', cleanedJson);
       
       let parsedModules;
       try {
-        parsedModules = JSON.parse(cleanedContent) as OpenAIModule[];
-      } catch (e1) {
-        console.warn('First parse attempt failed:', e1);
-        const jsonMatch = cleanedContent.match(/\[\s*\{[\s\S]*\}\s*\]/);
-        if (!jsonMatch) {
-          throw new Error('Could not find JSON array in response');
-        }
-        parsedModules = JSON.parse(jsonMatch[0]) as OpenAIModule[];
+        parsedModules = JSON.parse(cleanedJson) as OpenAIModule[];
+      } catch (error) {
+        console.error('JSON parse error:', error);
+        throw new Error('Failed to parse response as JSON. Please try again.');
       }
 
       if (!Array.isArray(parsedModules) || parsedModules.length === 0) {
         throw new Error('Invalid module format or empty modules array');
+      }
+
+      // Validate question count
+      const questions = parsedModules[0].questions;
+      if (!Array.isArray(questions) || questions.length !== numberOfQuestions) {
+        throw new Error(`Invalid question count. Expected ${numberOfQuestions}, got ${questions?.length || 0}`);
       }
 
       // Store the generated modules in localStorage
