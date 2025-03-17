@@ -10,7 +10,7 @@ interface QuizGeneratorProps {
   isLoading: boolean;
 }
 
-export default function QuizGenerator({ onSubmit, isLoading }: QuizGeneratorProps) {
+export function QuizGenerator({ onSubmit, isLoading }: QuizGeneratorProps) {
   const [text, setText] = useState('');
   const [showSettings, setShowSettings] = useState(false);
   const { numberOfQuestions } = useQuizSettings();

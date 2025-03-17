@@ -13,4 +13,7 @@ const store = createStore<QuizSettings>((set) => ({
 }));
 
 // Export a hook that uses the store
-export const useQuizSettings = () => useStore(store); 
+export const useQuizSettings = () => useStore(store);
+
+// Export getState for non-component usage
+export const getQuizSettings = () => store.getState(); 
