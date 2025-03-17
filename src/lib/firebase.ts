@@ -19,7 +19,7 @@ import {
   collection, 
   connectFirestoreEmulator,
   enableIndexedDbPersistence,
-  CACHE_SIZE_UNLIMITED
+  initializeFirestore
 } from 'firebase/firestore';
 import { Module } from '@/types/quiz';
 
@@ -99,18 +99,14 @@ const initializeFirebase = async () => {
 
     try {
       database = getDatabase(app);
-      firestore = getFirestore(app);
-      
-      // Set Firestore settings to use long polling
-      const settings = {
+      // Initialize Firestore with settings
+      firestore = initializeFirestore(app, {
         experimentalForceLongPolling: true,
-        experimentalAutoDetectLongPolling: true,
-        useFetchStreams: false
-      };
-      firestore.settings(settings);
-      console.log('Firestore settings configured for better connection stability');
+        experimentalAutoDetectLongPolling: true
+      });
+      console.log('Firestore initialized with custom settings');
       
-      // Enable offline persistence
+      // Enable offline persistence first
       try {
         await enableIndexedDbPersistence(firestore);
         console.log('Offline persistence enabled');
