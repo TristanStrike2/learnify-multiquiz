@@ -8,20 +8,132 @@ declare global {
 }
 
 import { initializeApp } from 'firebase/app';
-import { getAnalytics } from 'firebase/analytics';
-import { getDatabase, ref, set, onValue, off, get } from 'firebase/database';
 import { 
   getFirestore, 
   doc, 
   getDoc, 
   setDoc, 
-  serverTimestamp, 
   collection, 
-  connectFirestoreEmulator,
-  initializeFirestore,
-  enableIndexedDbPersistence
+  serverTimestamp,
+  getDocs,
+  deleteDoc,
+  query,
+  orderBy,
+  onSnapshot,
+  DocumentData
 } from 'firebase/firestore';
 import { Module } from '@/types/quiz';
+
+// Initialize Firebase
+const firebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
+};
+
+// Initialize Firebase app and Firestore
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// Store quiz data
+export async function storeQuizData(quizId: string, courseName: string, modules: Module[]) {
+  try {
+    const quizRef = doc(collection(db, 'quizzes'), quizId);
+    const quizData = {
+      courseName,
+      modules,
+      numberOfQuestions: modules[0]?.questions?.length || 0,
+      createdAt: serverTimestamp()
+    };
+    
+    await setDoc(quizRef, quizData);
+    return true;
+  } catch (error) {
+    console.error('Error storing quiz data:', error);
+    throw error;
+  }
+}
+
+// Get shared quiz
+export async function getSharedQuiz(quizId: string) {
+  try {
+    const quizRef = doc(collection(db, 'quizzes'), quizId);
+    const quizDoc = await getDoc(quizRef);
+    
+    if (!quizDoc.exists()) {
+      return null;
+    }
+    
+    return quizDoc.data();
+  } catch (error) {
+    console.error('Error fetching shared quiz:', error);
+    throw error;
+  }
+}
+
+// Store quiz submission
+export async function submitQuizResults(quizId: string, userName: string, results: any) {
+  try {
+    const submissionRef = doc(collection(db, `quizzes/${quizId}/submissions`), `${Date.now()}_${userName}`);
+    const submissionData = {
+      userName,
+      timestamp: serverTimestamp(),
+      results: {
+        ...results,
+        submittedAt: serverTimestamp()
+      }
+    };
+    
+    await setDoc(submissionRef, submissionData);
+    return true;
+  } catch (error) {
+    console.error('Error submitting quiz results:', error);
+    throw error;
+  }
+}
+
+// Get quiz submissions
+export async function getQuizSubmissions(quizId: string): Promise<DocumentData[]> {
+  try {
+    const submissionsRef = collection(db, `quizzes/${quizId}/submissions`);
+    const submissionsQuery = query(submissionsRef, orderBy('timestamp', 'desc'));
+    const snapshot = await getDocs(submissionsQuery);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  } catch (error) {
+    console.error('Error fetching quiz submissions:', error);
+    throw error;
+  }
+}
+
+// Subscribe to quiz submissions
+export function subscribeToQuizSubmissions(
+  quizId: string,
+  callback: (submissions: DocumentData[]) => void
+) {
+  const submissionsRef = collection(db, `quizzes/${quizId}/submissions`);
+  const submissionsQuery = query(submissionsRef, orderBy('timestamp', 'desc'));
+  
+  return onSnapshot(submissionsQuery, (snapshot) => {
+    const submissions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    callback(submissions);
+  });
+}
+
+// Delete quiz submission
+export async function deleteQuizSubmission(quizId: string, submissionId: string) {
+  try {
+    const submissionRef = doc(db, `quizzes/${quizId}/submissions/${submissionId}`);
+    await deleteDoc(submissionRef);
+    return true;
+  } catch (error) {
+    console.error('Error deleting quiz submission:', error);
+    throw error;
+  }
+}
 
 // Debug function to safely log environment variables
 const debugEnvVariables = () => {
@@ -75,10 +187,6 @@ const validateEnvVariables = () => {
   return config;
 };
 
-let app;
-let analytics;
-let database;
-let firestore;
 let initializationAttempts = 0;
 const MAX_INITIALIZATION_ATTEMPTS = 3;
 
@@ -93,59 +201,11 @@ const initializeFirebase = async () => {
       console.log('Firebase app initialized successfully');
     }
     
-    try {
-      analytics = getAnalytics(app);
-      console.log('Analytics initialized successfully');
-    } catch (analyticsError) {
-      console.warn('Analytics initialization skipped:', analyticsError);
-    }
-
-    try {
-      // Initialize Realtime Database with region
-      database = getDatabase(app);
-      
-      // Initialize Firestore with explicit settings
-      firestore = initializeFirestore(app, {
-        experimentalForceLongPolling: false, // Use WebSocket by default
-        experimentalAutoDetectLongPolling: true, // Auto-detect if WebSocket fails
-        cacheSizeBytes: 100 * 1024 * 1024, // 100MB cache
-      });
-      
-      console.log('Database services initialized');
-
-      // Enable offline persistence with better error handling
-      try {
-        await enableIndexedDbPersistence(firestore).catch((err) => {
-          if (err.code === 'failed-precondition') {
-            // Multiple tabs open, persistence can only be enabled in one tab
-            console.warn('Persistence disabled: Multiple tabs open');
-          } else if (err.code === 'unimplemented') {
-            // Client doesn't support persistence
-            console.warn('Persistence not supported in this environment');
-          } else {
-            throw err;
-          }
-        });
-        console.log('Offline persistence configured');
-      } catch (persistenceError) {
-        console.error('Error configuring persistence:', persistenceError);
-        // Continue without persistence
-      }
-      
-      // Monitor connection state
-      const connectedRef = ref(database, '.info/connected');
-      onValue(connectedRef, (snap) => {
-        const isConnected = snap.val() === true;
-        window._firebaseConnectionState = isConnected ? 'connected' : 'disconnected';
-        console.log('Firebase connection state:', window._firebaseConnectionState);
-      });
-      
-      console.log('Firebase services initialized successfully');
-      return true;
-    } catch (dbError) {
-      console.error('Database initialization failed:', dbError);
-      throw dbError;
-    }
+    // Initialize Firestore
+    db = getFirestore(app);
+    
+    console.log('Firebase services initialized successfully');
+    return true;
   } catch (error) {
     console.error('Firebase initialization failed:', error);
     initializationAttempts++;
@@ -158,8 +218,6 @@ const initializeFirebase = async () => {
     }
     
     window._firebaseInitError = error instanceof Error ? error : new Error(String(error));
-    database = null;
-    firestore = null;
     throw error;
   }
 };
@@ -171,12 +229,10 @@ initializeFirebase().catch(error => {
 
 // Enhanced database check with detailed error
 const checkDatabase = () => {
-  if (!database || !firestore) {
+  if (!db) {
     const error = window._firebaseInitError || new Error('Firebase not initialized');
     console.error('Database check failed:', {
-      hasDatabase: !!database,
-      hasFirestore: !!firestore,
-      connectionState: window._firebaseConnectionState,
+      hasFirestore: !!db,
       config: window._firebaseConfig,
       error
     });
@@ -190,18 +246,11 @@ const retryOperation = async (operation: () => Promise<any>, maxAttempts = 3, de
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
       // Check Firebase initialization
-      if (!database || !firestore) {
+      if (!db) {
         console.log('Firebase services not initialized, attempting to initialize...');
         await initializeFirebase();
       }
 
-      // Check connection state before attempting operation
-      if (window._firebaseConnectionState === 'disconnected') {
-        console.warn(`Firebase is disconnected, waiting before attempt ${attempt}...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-        continue; // Skip this attempt if still disconnected
-      }
-      
       const result = await operation();
       console.log('Operation succeeded after attempt', attempt);
       return result;
@@ -213,7 +262,6 @@ const retryOperation = async (operation: () => Promise<any>, maxAttempts = 3, de
           code: error.code,
           name: error.name
         },
-        connectionState: window._firebaseConnectionState,
         stack: error instanceof Error ? error.stack : undefined,
         details: error.details || error.serverResponse || undefined
       });
@@ -234,65 +282,6 @@ const retryOperation = async (operation: () => Promise<any>, maxAttempts = 3, de
   throw lastError;
 };
 
-// Store quiz data
-export async function storeQuizData(quizId: string, courseName: string, modules: Module[]) {
-  return retryOperation(async () => {
-    console.log('Storing quiz data:', {
-      quizId,
-      courseName,
-      moduleCount: modules.length,
-      firstModuleQuestions: modules[0]?.questions?.length
-    });
-    
-    if (!firestore) {
-      throw new Error('Firestore not initialized');
-    }
-    
-    const quizRef = doc(collection(firestore, 'quizzes'), quizId);
-    const quizData = {
-      courseName,
-      modules,
-      numberOfQuestions: modules[0]?.questions?.length || 0,
-      createdAt: serverTimestamp()
-    };
-    
-    await setDoc(quizRef, quizData);
-    console.log('Successfully stored quiz data');
-    
-    return true;
-  });
-}
-
-// Get shared quiz
-export async function getSharedQuiz(quizId: string) {
-  return retryOperation(async () => {
-    console.log('Fetching shared quiz:', quizId);
-    if (!firestore) {
-      throw new Error('Firestore not initialized');
-    }
-    
-    const quizRef = doc(collection(firestore, 'quizzes'), quizId);
-    const quizDoc = await getDoc(quizRef);
-    
-    if (!quizDoc.exists()) {
-      console.error('Quiz document not found:', quizId);
-      return null;
-    }
-    
-    const quizData = quizDoc.data();
-    console.log('Retrieved quiz data:', {
-      id: quizId,
-      exists: quizDoc.exists(),
-      dataFields: Object.keys(quizData || {}),
-      hasModules: Boolean(quizData?.modules),
-      moduleCount: quizData?.modules?.length,
-      numberOfQuestions: quizData?.numberOfQuestions
-    });
-    
-    return quizData;
-  });
-}
-
 // Store quiz submission
 export const storeQuizSubmission = async (
   quizId: string,
@@ -302,8 +291,8 @@ export const storeQuizSubmission = async (
   return retryOperation(async () => {
     checkDatabase();
     const quiz = await getSharedQuiz(quizId);
-    const submissionRef = ref(database!, `submissions/${quizId}/${Date.now()}_${userName}`);
-    await set(submissionRef, {
+    const submissionRef = doc(collection(db, `quizzes/${quizId}/submissions`), `${Date.now()}_${userName}`);
+    const submissionData = {
       userName,
       timestamp: Date.now(),
       results: {
@@ -311,116 +300,9 @@ export const storeQuizSubmission = async (
         modules: quiz?.modules || [],
         courseName: quiz?.courseName || 'Quiz Results'
       }
-    });
-    return true;
-  });
-};
-
-// Get quiz submissions
-export const subscribeToQuizSubmissions = (
-  quizId: string,
-  callback: (submissions: any[]) => void
-) => {
-  checkDatabase();
-  const submissionsRef = ref(database!, `submissions/${quizId}`);
-  
-  onValue(submissionsRef, (snapshot) => {
-    const data = snapshot.val();
-    const submissions = data ? Object.values(data) : [];
-    callback(submissions);
-  });
-
-  // Return unsubscribe function
-  return () => off(submissionsRef);
-};
-
-// Submit quiz results
-export const submitQuizResults = async (
-  quizId: string,
-  userName: string,
-  results: Record<string, any>
-) => {
-  checkDatabase();
-  try {
-    const quiz = await getSharedQuiz(quizId);
-    if (!quiz) {
-      throw new Error('Quiz not found');
-    }
-
-    // Get the module results (we only have one module for now)
-    const moduleResult = Object.values(results)[0];
-    if (!moduleResult) {
-      throw new Error('No module results found');
-    }
-
-    // Log the incoming data for debugging
-    console.log('Submitting quiz results:', {
-      quizId,
-      userName,
-      moduleResult
-    });
-
-    // Structure the results data properly
-    const submissionData = {
-      userName,
-      timestamp: Date.now(),
-      results: {
-        courseName: quiz.courseName,
-        modules: quiz.modules,
-        numberOfQuestions: quiz.numberOfQuestions,
-        moduleId: moduleResult.moduleId,
-        totalQuestions: moduleResult.totalQuestions,
-        correctAnswers: moduleResult.correctAnswers,
-        incorrectAnswers: moduleResult.incorrectAnswers,
-        questionsWithAnswers: moduleResult.questionsWithAnswers.map((qa: any) => {
-          // Log the question data for debugging
-          console.log('Processing question for submission:', {
-            questionText: qa.question.text,
-            correctOptionId: qa.question.correctOptionId,
-            selectedOptionId: qa.selectedOptionId,
-            numOptions: qa.question.options?.length
-          });
-          
-          return {
-            question: {
-              text: qa.question.text,
-              correctOptionId: qa.question.correctOptionId,
-              options: qa.question.options.map((opt: any) => ({
-                id: opt.id,
-                text: opt.text
-              }))
-            },
-            selectedOptionId: qa.selectedOptionId,
-            isCorrect: qa.isCorrect
-          };
-        })
-      }
     };
-
-    // Log the final submission data for debugging
-    console.log('Final submission data:', submissionData);
-
-    const submissionRef = ref(database!, `submissions/${quizId}/${Date.now()}_${userName}`);
-    await set(submissionRef, submissionData);
+    
+    await setDoc(submissionRef, submissionData);
     return true;
-  } catch (error) {
-    console.error('Error submitting quiz results:', error);
-    throw error;
-  }
-};
-
-// Export analytics instance
-export { analytics }; 
-
-// Delete quiz submission
-export const deleteQuizSubmission = async (quizId: string, submissionId: string) => {
-  checkDatabase();
-  try {
-    const submissionRef = ref(database!, `submissions/${quizId}/${submissionId}`);
-    await set(submissionRef, null); // Using null to delete the node
-    return true;
-  } catch (error) {
-    console.error('Error deleting quiz submission:', error);
-    throw error;
-  }
+  });
 }; 

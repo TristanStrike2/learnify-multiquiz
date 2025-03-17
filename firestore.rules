@@ -11,19 +11,38 @@ service cloud.firestore {
         && quiz.createdAt is timestamp;
     }
 
+    function isValidSubmission(submission) {
+      return submission.size() > 0
+        && submission.userName is string
+        && submission.timestamp is timestamp
+        && submission.results is map;
+    }
+
     // Quizzes collection rules
     match /quizzes/{quizId} {
-      // Allow reading quizzes without authentication
+      // Allow reading quizzes
       allow read: if true;
       
       // Allow creating quizzes with validation
       allow create: if isValidQuiz(request.resource.data);
       
-      // Allow updates only if the structure remains valid
-      allow update: if isValidQuiz(request.resource.data);
-      
-      // Allow deletion (you might want to restrict this based on your requirements)
-      allow delete: if false;
+      // Disallow updates and deletes
+      allow update, delete: if false;
+
+      // Submissions subcollection rules
+      match /submissions/{submissionId} {
+        // Allow reading submissions
+        allow read: if true;
+        
+        // Allow creating submissions with validation
+        allow create: if isValidSubmission(request.resource.data);
+        
+        // Allow deletion only if the submission exists
+        allow delete: if resource != null;
+        
+        // Disallow updates
+        allow update: if false;
+      }
     }
 
     // Default deny all other access
