@@ -8,7 +8,9 @@ service cloud.firestore {
         && quiz.courseName is string
         && quiz.modules is list
         && quiz.numberOfQuestions is number
-        && quiz.createdAt is timestamp;
+        && quiz.createdAt is timestamp
+        && (quiz.isArchived == null || quiz.isArchived is bool)
+        && (quiz.archivedAt == null || quiz.archivedAt is timestamp);
     }
 
     function isValidSubmission(submission) {
@@ -26,8 +28,16 @@ service cloud.firestore {
       // Allow creating quizzes with validation
       allow create: if isValidQuiz(request.resource.data);
       
-      // Disallow updates and deletes
-      allow update, delete: if false;
+      // Allow updates only for archiving/unarchiving
+      allow update: if isValidQuiz(request.resource.data) 
+        && (
+          // Only allow updating isArchived and archivedAt fields
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['isArchived', 'archivedAt'])
+        );
+      
+      // Disallow deletes
+      allow delete: if false;
 
       // Submissions subcollection rules
       match /submissions/{submissionId} {

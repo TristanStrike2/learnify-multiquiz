@@ -63,5 +63,7 @@ export interface SharedQuiz {
   modules: Module[];
   createdAt: Timestamp;
   numberOfQuestions: number;
+  isArchived?: boolean;
+  archivedAt?: Timestamp | null;
 }
 

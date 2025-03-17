@@ -12,6 +12,7 @@ import NotFound from "./pages/NotFound";
 import { ThankYouPage } from '@/pages/ThankYou';
 import NameInputPage from '@/pages/NameInput';
 import { QuizSettingsProvider } from '@/contexts/QuizSettingsContext';
+import { QuizManagementPage } from '@/pages/QuizManagement';
 
 const queryClient = new QueryClient();
 
@@ -29,7 +30,8 @@ const App = () => (
                 </div>
               </header>
               <Routes>
-                <Route path="/" element={<IndexPage />} />
+                <Route path="/" element={<QuizManagementPage />} />
+                <Route path="/create" element={<IndexPage />} />
                 <Route path="/quiz/:courseName/:quizId" element={<SharedQuiz />} />
                 <Route path="/quiz/:courseName/:quizId/name" element={<NameInputPage />} />
                 <Route path="/quiz/:courseName/:quizId/results/admin" element={<SubmissionsPage />} />

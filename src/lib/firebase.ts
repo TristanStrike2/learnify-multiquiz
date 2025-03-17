@@ -13,15 +13,18 @@ import {
   doc, 
   getDoc, 
   setDoc, 
+  updateDoc, 
   collection, 
   serverTimestamp,
   getDocs,
   deleteDoc,
   query,
   orderBy,
+  where,
   onSnapshot,
   DocumentData,
-  Firestore
+  Firestore,
+  Timestamp
 } from 'firebase/firestore';
 import { Module } from '@/types/quiz';
 
@@ -103,7 +106,9 @@ export async function storeQuizData(quizId: string, courseName: string, modules:
       courseName,
       modules: modulesWithIds,
       numberOfQuestions: modulesWithIds[0]?.questions?.length || 0,
-      createdAt: serverTimestamp()
+      createdAt: serverTimestamp(),
+      isArchived: false,
+      archivedAt: null
     };
     
     console.log('Storing quiz data:', {
@@ -121,6 +126,116 @@ export async function storeQuizData(quizId: string, courseName: string, modules:
     console.error('Error storing quiz data:', error);
     throw error;
   }
+}
+
+// Archive a quiz
+export async function archiveQuiz(quizId: string) {
+  try {
+    const db = ensureFirestore();
+    const quizRef = doc(collection(db, 'quizzes'), quizId);
+    
+    await updateDoc(quizRef, {
+      isArchived: true,
+      archivedAt: serverTimestamp()
+    });
+    
+    return true;
+  } catch (error) {
+    console.error('Error archiving quiz:', error);
+    throw error;
+  }
+}
+
+// Unarchive a quiz
+export async function unarchiveQuiz(quizId: string) {
+  try {
+    const db = ensureFirestore();
+    const quizRef = doc(collection(db, 'quizzes'), quizId);
+    
+    await updateDoc(quizRef, {
+      isArchived: false,
+      archivedAt: null
+    });
+    
+    return true;
+  } catch (error) {
+    console.error('Error unarchiving quiz:', error);
+    throw error;
+  }
+}
+
+// Get all archived quizzes
+export async function getArchivedQuizzes(): Promise<DocumentData[]> {
+  try {
+    const db = ensureFirestore();
+    const quizzesRef = collection(db, 'quizzes');
+    const archivedQuery = query(
+      quizzesRef,
+      where('isArchived', '==', true),
+      orderBy('archivedAt', 'desc')
+    );
+    
+    const snapshot = await getDocs(archivedQuery);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  } catch (error) {
+    console.error('Error fetching archived quizzes:', error);
+    throw error;
+  }
+}
+
+// Subscribe to archived quizzes
+export function subscribeToArchivedQuizzes(
+  callback: (quizzes: DocumentData[]) => void
+) {
+  const db = ensureFirestore();
+  const quizzesRef = collection(db, 'quizzes');
+  const archivedQuery = query(
+    quizzesRef,
+    where('isArchived', '==', true),
+    orderBy('archivedAt', 'desc')
+  );
+  
+  return onSnapshot(archivedQuery, (snapshot) => {
+    const quizzes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    callback(quizzes);
+  });
+}
+
+// Get active (non-archived) quizzes
+export async function getActiveQuizzes(): Promise<DocumentData[]> {
+  try {
+    const db = ensureFirestore();
+    const quizzesRef = collection(db, 'quizzes');
+    const activeQuery = query(
+      quizzesRef,
+      where('isArchived', '==', false),
+      orderBy('createdAt', 'desc')
+    );
+    
+    const snapshot = await getDocs(activeQuery);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  } catch (error) {
+    console.error('Error fetching active quizzes:', error);
+    throw error;
+  }
+}
+
+// Subscribe to active quizzes
+export function subscribeToActiveQuizzes(
+  callback: (quizzes: DocumentData[]) => void
+) {
+  const db = ensureFirestore();
+  const quizzesRef = collection(db, 'quizzes');
+  const activeQuery = query(
+    quizzesRef,
+    where('isArchived', '==', false),
+    orderBy('createdAt', 'desc')
+  );
+  
+  return onSnapshot(activeQuery, (snapshot) => {
+    const quizzes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    callback(quizzes);
+  });
 }
 
 // Get shared quiz
