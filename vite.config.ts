@@ -21,18 +21,25 @@ export default defineConfig({
     sourcemap: true,
     rollupOptions: {
       output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom', 'react-router-dom', 'zustand'],
+        manualChunks: (id) => {
+          if (id.includes('node_modules')) {
+            if (id.includes('zustand')) {
+              return 'zustand';
+            }
+            if (id.includes('react')) {
+              return 'react';
+            }
+            return 'vendor';
+          }
         },
       },
-      external: [],
-    },
-    commonjsOptions: {
-      include: [/node_modules/],
     },
   },
   base: "/",
   optimizeDeps: {
-    include: ['zustand'],
+    include: ['zustand', 'zustand/middleware'],
+    esbuildOptions: {
+      target: 'es2020',
+    },
   },
 });

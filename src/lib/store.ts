@@ -1,21 +1,12 @@
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
 
 interface QuizSettings {
   numberOfQuestions: number;
   setNumberOfQuestions: (count: number) => void;
 }
 
-export const useQuizSettings = create<QuizSettings>()(
-  persist(
-    (set) => ({
-      numberOfQuestions: 15, // Default value
-      setNumberOfQuestions: (count: number) => set({ numberOfQuestions: count }),
-    }),
-    {
-      name: 'quiz-settings',
-      storage: createJSONStorage(() => localStorage),
-      version: 1,
-    }
-  )
-); 
+// Create the store without persistence initially
+export const useQuizSettings = create<QuizSettings>((set) => ({
+  numberOfQuestions: 15, // Default value
+  setNumberOfQuestions: (count: number) => set({ numberOfQuestions: count }),
+})); 
