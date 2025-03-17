@@ -10,44 +10,78 @@ import { Download, Share2, Copy, CheckCircle2, FileText, User, Calendar, Trophy,
 import { format } from 'date-fns';
 import { useToast } from '@/components/ui/use-toast';
 import { Progress } from '@/components/ui/progress';
+import { DocumentData } from 'firebase/firestore';
+
+interface QuizOption {
+  id: string;
+  text: string;
+}
+
+interface QuizQuestion {
+  id: string;
+  text: string;
+  options: QuizOption[];
+  correctOptionId: string;
+}
+
+interface QuizModule {
+  id: string;
+  title: string;
+  content: string;
+  questions: QuizQuestion[];
+}
+
+interface QuestionWithAnswer {
+  question: {
+    text: string;
+    correctOptionId: string;
+    options: QuizOption[];
+  };
+  selectedOptionId: string;
+  isCorrect: boolean;
+  isTimeout: boolean;
+}
+
+interface QuizResults {
+  correctAnswers: number;
+  totalQuestions: number;
+  incorrectAnswers: number;
+  moduleId: string;
+  courseName: string;
+  modules: QuizModule[];
+  questionsWithAnswers: QuestionWithAnswer[];
+  answers?: Record<string, string>;
+}
 
 interface QuizSubmission {
   userName: string;
-  timestamp: number;
-  results: {
-    courseName: string;
-    modules: Array<{
-      id: string;
-      title: string;
-      content: string;
-      questions: Array<{
-        id: string;
-        text: string;
-        options: Array<{
-          id: string;
-          text: string;
-        }>;
-        correctOptionId: string;
-      }>;
-    }>;
-    moduleId: string;
-    totalQuestions: number;
-    correctAnswers: number;
-    incorrectAnswers: number;
-    questionsWithAnswers: Array<{
-      question: {
-        text: string;
-        correctOptionId: string;
-        options: Array<{
-          id: string;
-          text: string;
-        }>;
-      };
-      selectedOptionId: string;
-      isCorrect: boolean;
-      isTimeout: boolean;
-    }>;
-  };
+  timestamp: any; // Can be Firestore Timestamp, number, or string
+  results: QuizResults;
+}
+
+function getValidDate(timestamp: any): Date {
+  if (!timestamp) return new Date();
+  
+  // Handle Firestore Timestamp
+  if (timestamp && typeof timestamp.toDate === 'function') {
+    return timestamp.toDate();
+  }
+  
+  // Handle numeric timestamp
+  if (typeof timestamp === 'number') {
+    return new Date(timestamp);
+  }
+  
+  // Handle string timestamp
+  if (typeof timestamp === 'string') {
+    const parsed = Date.parse(timestamp);
+    if (!isNaN(parsed)) {
+      return new Date(parsed);
+    }
+  }
+  
+  // Fallback to current date
+  return new Date();
 }
 
 export function SubmissionsPage() {
@@ -83,7 +117,8 @@ export function SubmissionsPage() {
 
     // Subscribe to real-time updates
     const unsubscribe = subscribeToQuizSubmissions(quizId, (newSubmissions) => {
-      setSubmissions(newSubmissions);
+      // Cast the submissions to the correct type
+      setSubmissions(newSubmissions as QuizSubmission[]);
     });
 
     // Cleanup subscription on unmount
@@ -94,7 +129,6 @@ export function SubmissionsPage() {
     if (!submissions.length) return;
     
     try {
-      // Filter out submissions with invalid scores for PDF generation
       const validSubmissions = submissions.filter(
         sub => sub.results && 
         typeof sub.results.correctAnswers === 'number' && 
@@ -109,14 +143,13 @@ export function SubmissionsPage() {
       const pdfData = {
         courseName: 'Quiz Results',
         submissions: validSubmissions.map(sub => {
-          // Calculate percentage safely
           const correctAnswers = sub.results.correctAnswers || 0;
-          const totalQuestions = sub.results.totalQuestions || 1; // Avoid division by zero
+          const totalQuestions = sub.results.totalQuestions || 1;
           const percentage = Math.round((correctAnswers / totalQuestions) * 100);
           
           return {
             userName: sub.userName || 'Unknown User',
-            date: format(new Date(sub.timestamp || Date.now()), 'PPP'),
+            date: format(getValidDate(sub.timestamp), 'PPP'),
             score: `${correctAnswers}/${totalQuestions}`,
             percentage: isNaN(percentage) ? 0 : percentage
           };
@@ -398,7 +431,7 @@ export function SubmissionsPage() {
           <CardContent>
             <p className="text-lg font-medium text-green-600 dark:text-green-400">
               {submissions.length > 0 
-                ? format(new Date(submissions[0].timestamp), 'PPP')
+                ? format(getValidDate(submissions[0].timestamp), 'PPP')
                 : 'No submissions yet'}
             </p>
           </CardContent>
@@ -415,7 +448,6 @@ export function SubmissionsPage() {
           </Card>
         ) : (
           submissions.map((submission, index) => {
-            // Calculate percentage safely with validation
             const percentage = submission.results && 
               typeof submission.results.correctAnswers === 'number' && 
               typeof submission.results.totalQuestions === 'number' && 
@@ -439,7 +471,7 @@ export function SubmissionsPage() {
                       </CardTitle>
                       <CardDescription className="flex items-center gap-2">
                         <Calendar className="h-4 w-4" />
-                        {format(new Date(submission.timestamp), 'PPP')}
+                        {format(getValidDate(submission.timestamp), 'PPP')}
                       </CardDescription>
                     </div>
                     {isAdmin && (
