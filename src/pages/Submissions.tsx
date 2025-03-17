@@ -119,58 +119,73 @@ function QuizResultsModal({
     );
   }
 
+  const percentage = Math.round((submission.results.correctAnswers / submission.results.totalQuestions) * 100);
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden bg-gradient-to-br from-white to-purple-50/30 dark:from-background dark:to-purple-950/10">
-        <DialogHeader>
-          <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent flex items-center gap-2">
-            <User className="h-5 w-5" />
-            {submission.userName}'s Quiz Results
-          </DialogTitle>
-          <DialogDescription className="text-muted-foreground">
-            Completed on {format(getValidDate(submission.timestamp), 'PPP')}
-          </DialogDescription>
-        </DialogHeader>
-        
-        <div className="space-y-4">
-          <div className="flex items-center justify-between p-4 rounded-lg bg-gradient-to-br from-purple-50 to-white dark:from-purple-950/20 dark:to-background border border-purple-100 dark:border-purple-900/50">
-            <div>
-              <p className="font-medium text-purple-800 dark:text-purple-200">Overall Score</p>
-              <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
-                {submission.results.correctAnswers} / {submission.results.totalQuestions}
-              </p>
-            </div>
-            <div>
-              <p className="font-medium text-purple-800 dark:text-purple-200">Percentage</p>
-              <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
-                {Math.round((submission.results.correctAnswers / submission.results.totalQuestions) * 100)}%
-              </p>
+      <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden bg-gradient-to-br from-white to-purple-50/30 dark:from-background dark:to-purple-950/10">
+        <div className="flex flex-col space-y-6">
+          <div className="flex items-start justify-between">
+            <DialogHeader>
+              <div className="flex items-center gap-2">
+                <User className="h-6 w-6 text-purple-600" />
+                <div>
+                  <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+                    {submission.userName}'s Quiz Results
+                  </DialogTitle>
+                  <DialogDescription className="text-muted-foreground">
+                    Completed on {format(getValidDate(submission.timestamp), 'PPP')}
+                  </DialogDescription>
+                </div>
+              </div>
+            </DialogHeader>
+
+            <div className="flex items-center gap-6 px-6 py-3 rounded-lg bg-gradient-to-br from-purple-50 to-white dark:from-purple-950/20 dark:to-background border border-purple-100 dark:border-purple-900/50">
+              <div>
+                <p className="text-sm font-medium text-purple-800 dark:text-purple-200">Score</p>
+                <p className="text-xl font-bold text-purple-600 dark:text-purple-400">
+                  {submission.results.correctAnswers} / {submission.results.totalQuestions}
+                </p>
+              </div>
+              <div className="h-12 w-px bg-purple-200 dark:bg-purple-800" />
+              <div>
+                <p className="text-sm font-medium text-purple-800 dark:text-purple-200">Percentage</p>
+                <p className="text-xl font-bold text-purple-600 dark:text-purple-400">
+                  {percentage}%
+                </p>
+              </div>
             </div>
           </div>
 
-          <ScrollArea className="h-[50vh] pr-4">
+          <ScrollArea className="h-[65vh] pr-4 -mr-4">
             <div className="space-y-6">
               {submission.results.questionsWithAnswers.map((qa, index) => {
                 const selectedOption = qa.question.options.find(opt => opt.id === qa.selectedOptionId);
                 const correctOption = qa.question.options.find(opt => opt.id === qa.question.correctOptionId);
                 
                 return (
-                  <Card key={index} className="border-l-4 overflow-hidden transition-all duration-200">
-                    <CardHeader className="bg-gradient-to-br from-gray-50 to-white dark:from-gray-950/20 dark:to-background">
+                  <Card key={index} className={`border-l-4 overflow-hidden transition-all duration-200 ${
+                    qa.isTimeout
+                      ? 'border-l-yellow-500'
+                      : qa.isCorrect
+                      ? 'border-l-green-500'
+                      : 'border-l-red-500'
+                  }`}>
+                    <CardHeader className="bg-gradient-to-br from-gray-50 to-white dark:from-gray-950/20 dark:to-background py-4">
                       <div className="flex items-start justify-between">
-                        <CardTitle className="text-base">
+                        <CardTitle className="text-base flex-1 pr-4">
                           Question {index + 1}: {qa.question.text}
                         </CardTitle>
                         {qa.isTimeout ? (
-                          <span className="px-2 py-1 rounded text-sm bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-200">
+                          <span className="px-2 py-1 rounded text-sm bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-200 whitespace-nowrap">
                             Timed Out
                           </span>
                         ) : qa.isCorrect ? (
-                          <span className="px-2 py-1 rounded text-sm bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200">
+                          <span className="px-2 py-1 rounded text-sm bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200 whitespace-nowrap">
                             Correct
                           </span>
                         ) : (
-                          <span className="px-2 py-1 rounded text-sm bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200">
+                          <span className="px-2 py-1 rounded text-sm bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200 whitespace-nowrap">
                             Incorrect
                           </span>
                         )}
