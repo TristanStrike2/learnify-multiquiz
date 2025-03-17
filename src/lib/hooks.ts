@@ -446,6 +446,7 @@ export const useGenerateCourse = () => {
       setIsLoading(true);
       
       // Generate the course modules
+      console.log('Generating course from text:', text.substring(0, 100) + '...');
       const modules = await generateCourseFromText(text);
       
       if (modules.length === 0) {
@@ -461,13 +462,14 @@ export const useGenerateCourse = () => {
       localStorage.setItem('generatedModules', JSON.stringify(modules));
       
       // Create a temporary share link
-      const { quizId, urlSafeName } = await createShareLink("Untitled Course", modules);
+      const { quizId, urlSafeName } = await createShareLink("untitled-course", modules);
+      
+      // Update course state
+      setCourse({ modules, courseName: '' });
       
       // Navigate to the name input page
       navigate(`/quiz/${urlSafeName}/${quizId}/name`);
       
-      // Update course state
-      setCourse({ modules, courseName: '' });
       return true;
     } catch (error: any) {
       console.error('Error generating course:', error);

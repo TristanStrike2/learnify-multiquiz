@@ -10,6 +10,7 @@ import { SharedQuiz } from "@/components/SharedQuiz";
 import { SubmissionsPage } from "@/pages/Submissions";
 import NotFound from "./pages/NotFound";
 import { ThankYouPage } from '@/pages/ThankYou';
+import NameInputPage from '@/pages/NameInput';
 
 const queryClient = new QueryClient();
 
@@ -28,6 +29,7 @@ const App = () => (
             <Routes>
               <Route path="/" element={<IndexPage />} />
               <Route path="/quiz/:courseName/:quizId" element={<SharedQuiz />} />
+              <Route path="/quiz/:courseName/:quizId/name" element={<NameInputPage />} />
               <Route path="/quiz/:courseName/:quizId/results/admin" element={<SubmissionsPage />} />
               <Route path="/quiz/:courseName/:quizId/results/:userName" element={<SubmissionsPage />} />
               <Route path="/quiz/:courseName/:quizId/thank-you/:userName" element={<ThankYouPage />} />
