@@ -25,10 +25,11 @@ export interface PDFGeneratorParams {
   courseName: string;
   modules: Module[];
   results: Record<string, QuizResultData>;
+  numberOfQuestions?: number; // Optional for backward compatibility
 }
 
 export function generatePDF(params: PDFGeneratorParams): string {
-  const { userName, courseName, modules, results } = params;
+  const { userName, courseName, modules, results, numberOfQuestions } = params;
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'pt',
@@ -137,11 +138,21 @@ export function generatePDF(params: PDFGeneratorParams): string {
   doc.text(courseName, margin, yPos);
   yPos += lineHeight.header + 20;
 
-  // Calculate overall score
-  const scores = Object.values(results).map(result => 
-    (result.correctAnswers / result.totalQuestions) * 100
-  );
-  const totalScore = scores.reduce((a, b) => a + b, 0) / scores.length;
+  if (numberOfQuestions) {
+    setHeadingStyle(16, COLORS.SUBHEADING);
+    doc.text(`Total Questions: ${numberOfQuestions}`, margin, yPos);
+    yPos += lineHeight.normal + 10;
+  }
+
+  // Calculate overall score based on actual questions answered
+  const scores = Object.values(results).map(result => ({
+    score: (result.correctAnswers / result.totalQuestions) * 100,
+    weight: result.totalQuestions
+  }));
+  
+  // Calculate weighted average score
+  const totalQuestions = scores.reduce((sum, item) => sum + item.weight, 0);
+  const totalScore = scores.reduce((sum, item) => sum + (item.score * item.weight), 0) / totalQuestions;
 
   // Add overall score
   setHeadingStyle(20);
@@ -215,10 +226,14 @@ export function generatePDF(params: PDFGeneratorParams): string {
     doc.text(`Module: ${moduleName}`, margin, yPos);
     yPos += lineHeight.title + 15;
 
-    // Add module score
+    // Add module score with question count
     setHeadingStyle(14, COLORS.SUBHEADING);
     const score = Math.round((result.correctAnswers / result.totalQuestions) * 100);
-    doc.text(`Score: ${score}% (${result.correctAnswers} out of ${result.totalQuestions} correct)`, margin + 20, yPos);
+    doc.text(
+      `Score: ${score}% (${result.correctAnswers} out of ${result.totalQuestions} questions)`,
+      margin + 20,
+      yPos
+    );
     yPos += lineHeight.normal + 20;
 
     // Add detailed question results
