@@ -6,7 +6,12 @@ import { Label } from '@/components/ui/label';
 import { useQuizSettings } from '@/contexts/QuizSettingsContext';
 import { useToast } from '@/components/ui/use-toast';
 
-export function QuizSettingsDialog() {
+interface QuizSettingsDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+export function QuizSettingsDialog({ open, onOpenChange }: QuizSettingsDialogProps) {
   const { numberOfQuestions, setNumberOfQuestions } = useQuizSettings();
   const [inputValue, setInputValue] = useState(numberOfQuestions.toString());
   const { toast } = useToast();
@@ -36,10 +41,11 @@ export function QuizSettingsDialog() {
       title: "Settings Saved",
       description: `Number of questions set to ${num}.`,
     });
+    onOpenChange(false); // Close dialog after saving
   };
 
   return (
-    <Dialog open={true} onOpenChange={() => {}}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md bg-gradient-to-br from-white to-purple-50/30 dark:from-background dark:to-purple-950/10">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
@@ -68,7 +74,7 @@ export function QuizSettingsDialog() {
           </div>
         </div>
         <div className="flex justify-end gap-3">
-          <Button variant="outline" onClick={() => {}}>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
           <Button onClick={handleSave}>
