@@ -14,10 +14,12 @@ const generateCourseFromText = async (text: string, retryCount = 0): Promise<Mod
     console.log('Generating course from text:', text.substring(0, 100) + '...');
     console.log('Using API key:', GEMINI_API_KEY);
     
-    // Make the prompt even more explicit about needing 30 questions
+    // Get the number of questions from settings
+    const { numberOfQuestions } = useQuizSettings.getState();
+    
     const requestBody = JSON.stringify({
       contents: [{
-            parts: [{
+        parts: [{
           text: `Transform this text into a comprehensive quiz:
 
 ${text}
@@ -25,27 +27,27 @@ ${text}
 The quiz must have:
 1. A clear, descriptive title
 2. Educational content (400-600 words)
-3. EXACTLY 30 multiple-choice quiz questions - This is a strict requirement!
+3. EXACTLY ${numberOfQuestions} multiple-choice quiz questions - This is a strict requirement!
 
 Format your response as a JSON array with this exact structure:
 [
   {
     "title": "Quiz Title",
-                  "content": "Educational content that teaches the topic in a clear way...",
-                  "questions": [
-                    {
-                      "question": "Question text",
-                      "options": ["option1", "option2", "option3", "option4"],
-                      "correctAnswerIndex": 0
+    "content": "Educational content that teaches the topic in a clear way...",
+    "questions": [
+      {
+        "question": "Question text",
+        "options": ["option1", "option2", "option3", "option4"],
+        "correctAnswerIndex": 0
       }
-      // IMPORTANT: Include all 30 questions here - exactly 30, no more, no less
+      // IMPORTANT: Include all ${numberOfQuestions} questions here - exactly ${numberOfQuestions}, no more, no less
     ]
   }
 ]
 
 CRITICAL REQUIREMENTS:
 - Generate EXACTLY 1 quiz module
-- The quiz MUST have EXACTLY 30 questions - count carefully! This is a very strict requirement!
+- The quiz MUST have EXACTLY ${numberOfQuestions} questions - count carefully! This is a very strict requirement!
 - Each question MUST have EXACTLY 4 options - This is a very strict requirement!
 - Questions should test evaluation, analysis, application and understanding. Use Bloom's Taxonomy to ensure the questions are appropriate.
 - Content should be educational and well-structured
@@ -56,8 +58,8 @@ CRITICAL REQUIREMENTS:
 Failure to comply with the exact question count will require regeneration.`
         }]
       }],
-        generationConfig: {
-          temperature: 0.7,
+      generationConfig: {
+        temperature: 0.7,
         maxOutputTokens: 12000
       }
     });
@@ -130,7 +132,7 @@ Failure to comply with the exact question count will require regeneration.`
       throw new Error('Invalid module count - expected exactly 1 module');
     }
 
-    // Validate module has exactly 30 questions
+    // Validate module has exactly the required number of questions
     const module = parsedModules[0];
     
     // Check if we need to fix the question count
@@ -138,19 +140,19 @@ Failure to comply with the exact question count will require regeneration.`
       throw new Error('No questions found in module');
     }
     
-    // If we don't have exactly 30 questions and we haven't retried too many times, 
+    // If we don't have exactly the required number of questions and we haven't retried too many times, 
     // try to generate the quiz again
-    if (module.questions.length !== 30) {
-      console.warn(`Generated module has ${module.questions.length} questions instead of 30`);
+    if (module.questions.length !== numberOfQuestions) {
+      console.warn(`Generated module has ${module.questions.length} questions instead of ${numberOfQuestions}`);
       
       // If we've tried too many times, we'll try to fix the questions
       if (retryCount >= 2) {
         console.log('Max retry count reached, attempting to normalize question count');
         // Fix question count by duplicating or trimming
-        if (module.questions.length < 30) {
-          // If we have too few questions, duplicate some existing ones to reach 30
-          console.log('Too few questions, duplicating some to reach 30');
-          const questionsNeeded = 30 - module.questions.length;
+        if (module.questions.length < numberOfQuestions) {
+          // If we have too few questions, duplicate some existing ones to reach the target
+          console.log(`Too few questions, duplicating some to reach ${numberOfQuestions}`);
+          const questionsNeeded = numberOfQuestions - module.questions.length;
           for (let i = 0; i < questionsNeeded; i++) {
             // Clone a random question and slightly modify it
             const randomIndex = Math.floor(Math.random() * module.questions.length);
@@ -164,10 +166,10 @@ Failure to comply with the exact question count will require regeneration.`
             
             module.questions.push(clonedQuestion);
           }
-        } else if (module.questions.length > 30) {
-          // If we have too many questions, keep only the first 30
-          console.log('Too many questions, trimming to 30');
-          module.questions = module.questions.slice(0, 30);
+        } else if (module.questions.length > numberOfQuestions) {
+          // If we have too many questions, keep only the first N
+          console.log(`Too many questions, trimming to ${numberOfQuestions}`);
+          module.questions = module.questions.slice(0, numberOfQuestions);
         }
       } else {
         // Retry the generation with a more explicit prompt

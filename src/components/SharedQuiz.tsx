@@ -9,12 +9,13 @@ import { Progress } from '@/components/ui/progress';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Download } from 'lucide-react';
 import { generatePDF } from '@/lib/pdfGenerator';
+import { SharedQuiz as SharedQuizType } from '@/lib/shareLink';
 
 export function SharedQuiz() {
   const { quizId, courseName } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [quiz, setQuiz] = useState<any>(null);
+  const [quiz, setQuiz] = useState<SharedQuizType | null>(null);
   const [userName, setUserName] = useState('');
   const [showContent, setShowContent] = useState(false);
   const [showQuestions, setShowQuestions] = useState(false);
@@ -79,8 +80,8 @@ export function SharedQuiz() {
       return;
     }
 
-    // Verify we have exactly 30 questions
-    if (quiz.modules[0].questions.length !== 30) {
+    // Verify we have the correct number of questions
+    if (quiz.modules[0].questions.length !== quiz.numberOfQuestions) {
       toast({
         title: 'Error',
         description: 'Quiz configuration error. Please contact support.',
@@ -89,8 +90,8 @@ export function SharedQuiz() {
       return;
     }
 
-    // Initialize answers array for all 30 questions
-    setAnswers(new Array(30).fill(''));
+    // Initialize answers array for all questions
+    setAnswers(new Array(quiz.numberOfQuestions).fill(''));
     setCurrentQuestionIndex(0);
     setShowContent(false);
     setShowQuestions(true);
@@ -244,7 +245,7 @@ export function SharedQuiz() {
                 Welcome to the quiz! Please enter your name to begin.
               </p>
               <p className="text-sm text-muted-foreground">
-                This quiz contains 30 multiple-choice questions to test your knowledge.
+                This quiz contains {quiz.numberOfQuestions} multiple-choice questions to test your knowledge.
               </p>
             </div>
             <form onSubmit={handleNameSubmit} className="space-y-4">
@@ -253,12 +254,10 @@ export function SharedQuiz() {
                 placeholder="Enter your name"
                 value={userName}
                 onChange={(e) => setUserName(e.target.value)}
-                className="text-lg py-6"
-                required
-                autoFocus
+                className="text-center"
               />
-              <Button type="submit" className="w-full py-6 text-lg">
-                Access Quiz
+              <Button type="submit" className="w-full">
+                Start Quiz
               </Button>
             </form>
           </CardContent>
