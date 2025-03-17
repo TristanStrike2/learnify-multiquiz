@@ -446,10 +446,10 @@ export function SubmissionsPage() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="absolute top-4 right-4 text-destructive hover:text-destructive/90 hover:bg-destructive/10"
+                        className="absolute top-2 right-2 text-red-500 hover:text-red-50 hover:bg-red-500 dark:text-red-400 dark:hover:text-red-50 dark:hover:bg-red-500 transition-all duration-200 p-2.5 h-auto w-auto"
                         onClick={() => handleDeleteClick(submissionId, submission.userName)}
                       >
-                        <Trash2 className="h-5 w-5" />
+                        <Trash2 className="h-6 w-6" />
                       </Button>
                     )}
                   </div>
