@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 
 interface QuizSettings {
   numberOfQuestions: number;
@@ -14,6 +14,8 @@ export const useQuizSettings = create<QuizSettings>()(
     }),
     {
       name: 'quiz-settings',
+      storage: createJSONStorage(() => localStorage),
+      version: 1,
     }
   )
 ); 

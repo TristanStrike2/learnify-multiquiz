@@ -22,10 +22,17 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          vendor: ['react', 'react-dom', 'react-router-dom'],
+          vendor: ['react', 'react-dom', 'react-router-dom', 'zustand'],
         },
       },
+      external: [],
+    },
+    commonjsOptions: {
+      include: [/node_modules/],
     },
   },
   base: "/",
+  optimizeDeps: {
+    include: ['zustand'],
+  },
 });
