@@ -4,7 +4,7 @@ import { toast, useToast } from '@/components/ui/use-toast';
 import { courseData } from '@/data/courseData';
 import { useNavigate } from 'react-router-dom';
 import { createShareLink } from '@/lib/shareLink';
-import { useQuizSettings } from './store';
+import { getQuizSettings } from '@/contexts/QuizSettingsContext';
 
 const GEMINI_API_KEY = 'AIzaSyBGFkmJ-sdB2vAB-2eT2G2mTKHOo3XUPpU';
 
@@ -15,11 +15,12 @@ const generateCourseFromText = async (text: string, retryCount = 0): Promise<Mod
     console.log('Using API key:', GEMINI_API_KEY);
     
     // Get the number of questions from settings
-    const { numberOfQuestions } = useQuizSettings.getState();
+    const { numberOfQuestions } = getQuizSettings();
     
+    // Make the prompt even more explicit about needing 30 questions
     const requestBody = JSON.stringify({
       contents: [{
-        parts: [{
+            parts: [{
           text: `Transform this text into a comprehensive quiz:
 
 ${text}
@@ -33,12 +34,12 @@ Format your response as a JSON array with this exact structure:
 [
   {
     "title": "Quiz Title",
-    "content": "Educational content that teaches the topic in a clear way...",
-    "questions": [
-      {
-        "question": "Question text",
-        "options": ["option1", "option2", "option3", "option4"],
-        "correctAnswerIndex": 0
+                  "content": "Educational content that teaches the topic in a clear way...",
+                  "questions": [
+                    {
+                      "question": "Question text",
+                      "options": ["option1", "option2", "option3", "option4"],
+                      "correctAnswerIndex": 0
       }
       // IMPORTANT: Include all ${numberOfQuestions} questions here - exactly ${numberOfQuestions}, no more, no less
     ]
@@ -47,7 +48,7 @@ Format your response as a JSON array with this exact structure:
 
 CRITICAL REQUIREMENTS:
 - Generate EXACTLY 1 quiz module
-- The quiz MUST have EXACTLY ${numberOfQuestions} questions - count carefully! This is a very strict requirement!
+- The quiz MUST have EXACTLY 30 questions - count carefully! This is a very strict requirement!
 - Each question MUST have EXACTLY 4 options - This is a very strict requirement!
 - Questions should test evaluation, analysis, application and understanding. Use Bloom's Taxonomy to ensure the questions are appropriate.
 - Content should be educational and well-structured
@@ -58,8 +59,8 @@ CRITICAL REQUIREMENTS:
 Failure to comply with the exact question count will require regeneration.`
         }]
       }],
-      generationConfig: {
-        temperature: 0.7,
+        generationConfig: {
+          temperature: 0.7,
         maxOutputTokens: 12000
       }
     });
@@ -132,7 +133,7 @@ Failure to comply with the exact question count will require regeneration.`
       throw new Error('Invalid module count - expected exactly 1 module');
     }
 
-    // Validate module has exactly the required number of questions
+    // Validate module has exactly 30 questions
     const module = parsedModules[0];
     
     // Check if we need to fix the question count
@@ -140,19 +141,19 @@ Failure to comply with the exact question count will require regeneration.`
       throw new Error('No questions found in module');
     }
     
-    // If we don't have exactly the required number of questions and we haven't retried too many times, 
+    // If we don't have exactly 30 questions and we haven't retried too many times, 
     // try to generate the quiz again
-    if (module.questions.length !== numberOfQuestions) {
-      console.warn(`Generated module has ${module.questions.length} questions instead of ${numberOfQuestions}`);
+    if (module.questions.length !== 30) {
+      console.warn(`Generated module has ${module.questions.length} questions instead of 30`);
       
       // If we've tried too many times, we'll try to fix the questions
       if (retryCount >= 2) {
         console.log('Max retry count reached, attempting to normalize question count');
         // Fix question count by duplicating or trimming
-        if (module.questions.length < numberOfQuestions) {
-          // If we have too few questions, duplicate some existing ones to reach the target
-          console.log(`Too few questions, duplicating some to reach ${numberOfQuestions}`);
-          const questionsNeeded = numberOfQuestions - module.questions.length;
+        if (module.questions.length < 30) {
+          // If we have too few questions, duplicate some existing ones to reach 30
+          console.log('Too few questions, duplicating some to reach 30');
+          const questionsNeeded = 30 - module.questions.length;
           for (let i = 0; i < questionsNeeded; i++) {
             // Clone a random question and slightly modify it
             const randomIndex = Math.floor(Math.random() * module.questions.length);
@@ -166,10 +167,10 @@ Failure to comply with the exact question count will require regeneration.`
             
             module.questions.push(clonedQuestion);
           }
-        } else if (module.questions.length > numberOfQuestions) {
-          // If we have too many questions, keep only the first N
-          console.log(`Too many questions, trimming to ${numberOfQuestions}`);
-          module.questions = module.questions.slice(0, numberOfQuestions);
+        } else if (module.questions.length > 30) {
+          // If we have too many questions, keep only the first 30
+          console.log('Too many questions, trimming to 30');
+          module.questions = module.questions.slice(0, 30);
         }
       } else {
         // Retry the generation with a more explicit prompt
@@ -456,30 +457,160 @@ export const useQuiz = () => {
   };
 };
 
-export const useGenerateCourse = () => {
-  const [course, setCourse] = useState<Course | null>(null);
+export function useGenerateCourse() {
+  const [course, setCourse] = useState<OpenAIModule[] | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const { numberOfQuestions } = getQuizSettings();
+  const navigate = useNavigate();
   const { toast } = useToast();
 
   const generateCourse = async (text: string): Promise<boolean> => {
+    if (!text.trim()) {
+      return false;
+    }
+
     try {
       setIsLoading(true);
-      const modules = await generateCourseFromText(text);
-      const { numberOfQuestions } = useQuizSettings.getState();
+      console.log('Generating course from text:', text.substring(0, 100) + '...');
       
-      setCourse({
-        modules,
-        numberOfQuestions,
-        courseName: ''  // This will be set later when the user enters the course name
+      const prompt = `You are a quiz generator. Generate a quiz with exactly ${numberOfQuestions} multiple choice questions based on the following text. Return ONLY a JSON array with this exact structure, and nothing else:
+
+[
+  {
+    "title": "Quiz Title",
+    "content": "Educational content summary",
+    "questions": [
+      {
+        "id": "q1",
+        "text": "Question text",
+        "options": [
+          {
+            "id": "A",
+            "text": "First option"
+          },
+          {
+            "id": "B",
+            "text": "Second option"
+          },
+          {
+            "id": "C",
+            "text": "Third option"
+          },
+          {
+            "id": "D",
+            "text": "Fourth option"
+          }
+        ],
+        "correctOptionId": "A"
+      }
+    ]
+  }
+]
+
+Requirements:
+1. Generate exactly ${numberOfQuestions} questions
+2. Each question must have exactly 4 options
+3. Each option must have an id (A, B, C, or D) and text
+4. correctOptionId must match one of the option ids
+5. Return ONLY the JSON array, no other text
+6. Questions should test understanding rather than just recall
+7. Content should be educational and well-structured
+
+Here's the text to base the questions on:
+
+${text}`;
+      
+      const requestBody = JSON.stringify({
+        contents: [{
+          parts: [{
+            text: prompt
+          }]
+        }],
+        generationConfig: {
+          temperature: 0.7,
+          maxOutputTokens: 12000
+        }
       });
+
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: requestBody
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      
+      if (!data.candidates?.[0]?.content?.parts?.[0]?.text) {
+        throw new Error('Invalid response format from Gemini API');
+      }
+
+      const content = data.candidates[0].content.parts[0].text;
+      console.log('Raw response content:', content);
+      
+      // Extract JSON from the response
+      const jsonMatch = content.match(/\[\s*\{[\s\S]*\}\s*\]/);
+      if (!jsonMatch) {
+        throw new Error('Could not find JSON array in response');
+      }
+
+      // Clean the extracted JSON
+      const cleanedJson = jsonMatch[0]
+        .replace(/[\u0000-\u001F\u007F-\u009F]/g, '') // Remove control characters
+        .replace(/\\[^"\\\/bfnrtu]/g, '\\\\$&') // Escape unescaped backslashes
+        .replace(/([{,]\s*)(\w+)\s*:/g, '$1"$2":') // Add quotes to unquoted property names
+        .replace(/\n/g, '\\n') // Handle newlines
+        .replace(/```[^`]*```/g, '') // Remove any markdown code blocks
+        .replace(/^[^[]*(\[[\s\S]*\])[^]*$/, '$1'); // Extract just the JSON array
+
+      console.log('Cleaned JSON:', cleanedJson);
+      
+      let parsedModules;
+      try {
+        parsedModules = JSON.parse(cleanedJson) as OpenAIModule[];
+      } catch (error) {
+        console.error('JSON parse error:', error);
+        throw new Error('Failed to parse response as JSON. Please try again.');
+      }
+
+      if (!Array.isArray(parsedModules) || parsedModules.length === 0) {
+        throw new Error('Invalid module format or empty modules array');
+      }
+
+      // Validate question count
+      const questions = parsedModules[0].questions;
+      if (!Array.isArray(questions) || questions.length !== numberOfQuestions) {
+        throw new Error(`Invalid question count. Expected ${numberOfQuestions}, got ${questions?.length || 0}`);
+      }
+
+      // Store the generated modules in localStorage
+      localStorage.setItem('generatedModules', JSON.stringify(parsedModules));
+      
+      // Create a temporary share link
+      const { quizId, urlSafeName } = await createShareLink("untitled-course", parsedModules);
+      
+      // Update course state
+      setCourse(parsedModules);
+      
+      // Navigate to the name input page
+      navigate(`/quiz/${urlSafeName}/${quizId}/name`);
       
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error generating course:', error);
+      const errorMessage = error?.message || 'Unknown error occurred';
       toast({
-        title: 'Error',
-        description: 'Failed to generate course. Please try again.',
-        variant: 'destructive',
+        title: "API Error",
+        description: `Failed to generate course content: ${errorMessage}`,
+        variant: "destructive"
       });
       return false;
     } finally {
@@ -487,5 +618,17 @@ export const useGenerateCourse = () => {
     }
   };
 
-  return { generateCourse, course, isLoading, setCourse };
-};
+  const resetCourse = useCallback(() => {
+    setCourse(null);
+    setIsLoading(false);
+    localStorage.removeItem('generatedModules');
+  }, []);
+
+  return {
+    generateCourse,
+    course,
+    isLoading,
+    setCourse,
+    resetCourse
+  };
+}

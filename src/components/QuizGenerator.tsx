@@ -3,7 +3,8 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Settings } from 'lucide-react';
 import { QuizSettingsDialog } from './QuizSettingsDialog';
-import { useQuizSettings } from '@/lib/store';
+import { useQuizSettings } from '@/contexts/QuizSettingsContext';
+import { useToast } from '@/components/ui/use-toast';
 
 interface QuizGeneratorProps {
   onSubmit: (text: string) => Promise<void>;

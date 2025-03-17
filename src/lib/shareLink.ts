@@ -1,7 +1,7 @@
 import { nanoid } from 'nanoid';
-import { Module } from '@/types/quiz';
-import { storeQuizData } from './firebase';
-import { useQuizSettings } from '@/lib/store';
+import { Module, Course } from '@/types/quiz';
+import { storeQuizData } from '@/lib/firebase';
+import { getQuizSettings } from '@/contexts/QuizSettingsContext';
 
 export interface SharedQuiz {
   id: string;
@@ -22,7 +22,7 @@ const createUrlSafeName = (name: string): string => {
 export const createShareLink = async (courseName: string, modules: Module[]): Promise<{ quizId: string; urlSafeName: string }> => {
   try {
     // Get the current question count from settings
-    const { numberOfQuestions } = useQuizSettings.getState();
+    const { numberOfQuestions } = getQuizSettings();
     
     // Generate a unique ID for the quiz
     const quizId = nanoid(8);
