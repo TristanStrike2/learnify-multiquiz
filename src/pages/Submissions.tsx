@@ -125,7 +125,7 @@ function QuizResultsModal({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden bg-gradient-to-br from-white to-purple-50/30 dark:from-background dark:to-purple-950/10">
         <div className="flex flex-col space-y-8">
-          <div className="flex items-start justify-between gap-6">
+          <div className="flex items-center justify-between gap-6 pr-8">
             <DialogHeader className="flex-1">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-purple-100 dark:bg-purple-900/50 rounded-lg">
@@ -143,14 +143,14 @@ function QuizResultsModal({
             </DialogHeader>
 
             <div className="flex items-center gap-8 px-8 py-4 rounded-lg bg-gradient-to-br from-purple-50 to-white dark:from-purple-950/20 dark:to-background border border-purple-100 dark:border-purple-900/50">
-              <div>
+              <div className="text-center">
                 <p className="text-sm font-medium text-purple-800 dark:text-purple-200 mb-1">Score</p>
                 <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
                   {submission.results.correctAnswers} / {submission.results.totalQuestions}
                 </p>
               </div>
               <div className="h-14 w-px bg-purple-200 dark:bg-purple-800" />
-              <div>
+              <div className="text-center">
                 <p className="text-sm font-medium text-purple-800 dark:text-purple-200 mb-1">Percentage</p>
                 <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
                   {percentage}%
