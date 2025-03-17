@@ -458,20 +458,116 @@ export function useGenerateCourse() {
   const [course, setCourse] = useState<OpenAIModule[] | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { numberOfQuestions } = useQuizSettings();
+  const navigate = useNavigate();
+  const { toast } = useToast();
 
-  const generateCourseFromText = async (text: string) => {
-    setIsLoading(true);
+  const generateCourse = async (text: string): Promise<boolean> => {
+    if (!text.trim()) {
+      return false;
+    }
+
     try {
+      setIsLoading(true);
+      console.log('Generating course from text:', text.substring(0, 100) + '...');
+      
       const prompt = `Generate a quiz with exactly ${numberOfQuestions} multiple choice questions based on the following text. Format the response as a JSON array where each object represents a module with a title, content, and questions array. Each question should have a unique ID, text, an array of 4 options (each with an ID and text), and a correctOptionId that matches one of the option IDs. Make sure the questions test understanding rather than just recall. Here's the text to base the questions on:\n\n${text}`;
       
-      // ... rest of the existing function code ...
-    } catch (error) {
+      const requestBody = JSON.stringify({
+        contents: [{
+          parts: [{
+            text: prompt
+          }]
+        }],
+        generationConfig: {
+          temperature: 0.7,
+          maxOutputTokens: 12000
+        }
+      });
+
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: requestBody
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      
+      if (!data.candidates?.[0]?.content?.parts?.[0]?.text) {
+        throw new Error('Invalid response format from Gemini API');
+      }
+
+      const content = data.candidates[0].content.parts[0].text;
+      console.log('Raw response content:', content);
+      
+      const cleanedContent = content
+        .replace(/[\u0000-\u001F\u007F-\u009F]/g, '')
+        .replace(/\\[^"\\\/bfnrtu]/g, '\\\\$&')
+        .replace(/([{,]\s*)(\w+)\s*:/g, '$1"$2":')
+        .replace(/\n/g, '\\n');
+      
+      let parsedModules;
+      try {
+        parsedModules = JSON.parse(cleanedContent) as OpenAIModule[];
+      } catch (e1) {
+        console.warn('First parse attempt failed:', e1);
+        const jsonMatch = cleanedContent.match(/\[\s*\{[\s\S]*\}\s*\]/);
+        if (!jsonMatch) {
+          throw new Error('Could not find JSON array in response');
+        }
+        parsedModules = JSON.parse(jsonMatch[0]) as OpenAIModule[];
+      }
+
+      if (!Array.isArray(parsedModules) || parsedModules.length === 0) {
+        throw new Error('Invalid module format or empty modules array');
+      }
+
+      // Store the generated modules in localStorage
+      localStorage.setItem('generatedModules', JSON.stringify(parsedModules));
+      
+      // Create a temporary share link
+      const { quizId, urlSafeName } = await createShareLink("untitled-course", parsedModules);
+      
+      // Update course state
+      setCourse(parsedModules);
+      
+      // Navigate to the name input page
+      navigate(`/quiz/${urlSafeName}/${quizId}/name`);
+      
+      return true;
+    } catch (error: any) {
       console.error('Error generating course:', error);
-      throw error;
+      const errorMessage = error?.message || 'Unknown error occurred';
+      toast({
+        title: "API Error",
+        description: `Failed to generate course content: ${errorMessage}`,
+        variant: "destructive"
+      });
+      return false;
     } finally {
       setIsLoading(false);
     }
   };
 
-  // ... rest of the existing code ...
+  const resetCourse = useCallback(() => {
+    setCourse(null);
+    setIsLoading(false);
+    localStorage.removeItem('generatedModules');
+  }, []);
+
+  return {
+    generateCourse,
+    course,
+    isLoading,
+    setCourse,
+    resetCourse
+  };
 }
