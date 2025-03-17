@@ -2,6 +2,8 @@ import { useState, useCallback } from 'react';
 import { Question, QuizResult, QuizState, OpenAIQuizQuestion, Module, OpenAIModule, Course } from '@/types/quiz';
 import { toast, useToast } from '@/components/ui/use-toast';
 import { courseData } from '@/data/courseData';
+import { useNavigate } from 'react-router-dom';
+import { createShareLink } from '@/lib/shareLink';
 
 const GEMINI_API_KEY = 'AIzaSyBGFkmJ-sdB2vAB-2eT2G2mTKHOo3XUPpU';
 
@@ -241,9 +243,9 @@ Failure to comply with the exact question count will require regeneration.`
 
 export const useQuiz = () => {
   const [quizState, setQuizState] = useState<QuizState>({ status: 'input' });
-  // Always use the hardcoded API key
   const [apiKey, setApiKey] = useState<string | null>(GEMINI_API_KEY);
   const { toast } = useToast();
+  const navigate = useNavigate();
   
   const saveApiKey = useCallback((key: string) => {
     // No need to use localStorage anymore
@@ -257,17 +259,6 @@ export const useQuiz = () => {
   
   const startQuizGeneration = useCallback(async (text: string) => {
     try {
-      // Always use the hardcoded API key instead of checking localStorage
-      // const apiKey = localStorage.getItem('gemini_api_key');
-      // if (!apiKey) {
-      //   toast({
-      //     title: "API Key Required",
-      //     description: "Please enter your Gemini API key in settings",
-      //     variant: "destructive"
-      //   });
-      //   return;
-      // }
-      
       setQuizState({ status: 'generating' });
       const modules = await generateCourseFromText(text);
       
@@ -281,16 +272,24 @@ export const useQuiz = () => {
         return;
       }
       
-      // After generating the quiz, we move to the name input state
+      // Store the generated modules in localStorage
+      localStorage.setItem('generatedModules', JSON.stringify(modules));
+      
+      // Create a temporary share link to get the URL parameters
+      const { quizId, urlSafeName } = await createShareLink("Untitled Course", modules);
+      
+      // Navigate to the name input page with the quiz ID
+      navigate(`/quiz/${urlSafeName}/${quizId}/name`);
+      
+      // Update state after navigation
       setQuizState({ 
         status: 'course', 
         modules,
         currentModuleIndex: 0,
-        currentView: 'name' // Start with name input
+        currentView: 'name'
       });
     } catch (error: any) {
       console.error('Error generating course:', error);
-      // Show a more specific error message based on the error
       const errorMessage = error?.message || 'Unknown error occurred';
       toast({
         title: "API Error",
@@ -299,7 +298,7 @@ export const useQuiz = () => {
       });
       setQuizState({ status: 'input' });
     }
-  }, []);
+  }, [navigate]);
 
   const handleNameSubmit = useCallback((name: string) => {
     setQuizState(prev => {
@@ -440,17 +439,38 @@ export const useGenerateCourse = () => {
   const [course, setCourse] = useState<Course | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const generateCourse = async (text: string): Promise<boolean> => {
     try {
       setIsLoading(true);
       
+      // Generate the course modules
       const modules = await generateCourseFromText(text);
+      
+      if (modules.length === 0) {
+        toast({
+          title: "Error",
+          description: "Could not generate course modules from the provided text. Please try again with more detailed content.",
+          variant: "destructive"
+        });
+        return false;
+      }
+      
+      // Store the generated modules in localStorage
+      localStorage.setItem('generatedModules', JSON.stringify(modules));
+      
+      // Create a temporary share link
+      const { quizId, urlSafeName } = await createShareLink("Untitled Course", modules);
+      
+      // Navigate to the name input page
+      navigate(`/quiz/${urlSafeName}/${quizId}/name`);
+      
+      // Update course state
       setCourse({ modules, courseName: '' });
       return true;
     } catch (error: any) {
       console.error('Error generating course:', error);
-      // Show a more specific error message based on the error
       const errorMessage = error?.message || 'Unknown error occurred';
       toast({
         title: "API Error",

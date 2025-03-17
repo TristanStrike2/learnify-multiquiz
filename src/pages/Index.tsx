@@ -45,18 +45,20 @@ export function IndexPage() {
   }, []);
 
   const handleGenerateCourse = async (text: string) => {
+    // Store the content first
     setContent(text);
+    
+    // Generate the course with the provided text
     const success = await generateCourse(text);
+    
     if (success) {
-      setShowNameInput(true);
-      // Reset other states to prevent showing quiz content
+      // Reset other states
       setShowModuleContent(false);
       setQuizState({
         isActive: false,
         currentQuestionIndex: 0,
         answers: [],
       });
-      // Prevent any other content from showing
       setCurrentModuleIndex(0);
       setModuleResults({});
     }
