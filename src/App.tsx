@@ -11,38 +11,41 @@ import { SubmissionsPage } from "@/pages/Submissions";
 import NotFound from "./pages/NotFound";
 import { ThankYouPage } from '@/pages/ThankYou';
 import NameInputPage from '@/pages/NameInput';
+import { QuizSettingsProvider } from '@/contexts/QuizSettingsContext';
 
 const queryClient = new QueryClient();
 
 const App = () => (
-  <Router>
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
-        <TooltipProvider>
-          <div className="min-h-screen bg-background text-foreground">
-            <header className="border-b">
-              <div className="container flex h-16 items-center justify-between">
-                <h1 className="text-xl font-bold">IxE Learning Prototype</h1>
-                <ThemeToggle />
-              </div>
-            </header>
-            <Routes>
-              <Route path="/" element={<IndexPage />} />
-              <Route path="/quiz/:courseName/:quizId" element={<SharedQuiz />} />
-              <Route path="/quiz/:courseName/:quizId/name" element={<NameInputPage />} />
-              <Route path="/quiz/:courseName/:quizId/results/admin" element={<SubmissionsPage />} />
-              <Route path="/quiz/:courseName/:quizId/results/:userName" element={<SubmissionsPage />} />
-              <Route path="/quiz/:courseName/:quizId/thank-you/:userName" element={<ThankYouPage />} />
-              <Route path="/submissions" element={<SubmissionsPage />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-            <Toaster />
-            <Sonner />
-          </div>
-        </TooltipProvider>
-      </ThemeProvider>
-    </QueryClientProvider>
-  </Router>
+  <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
+    <QuizSettingsProvider>
+      <Router>
+        <QueryClientProvider client={queryClient}>
+          <TooltipProvider>
+            <div className="min-h-screen bg-background text-foreground">
+              <header className="border-b">
+                <div className="container flex h-16 items-center justify-between">
+                  <h1 className="text-xl font-bold">IxE Learning Prototype</h1>
+                  <ThemeToggle />
+                </div>
+              </header>
+              <Routes>
+                <Route path="/" element={<IndexPage />} />
+                <Route path="/quiz/:courseName/:quizId" element={<SharedQuiz />} />
+                <Route path="/quiz/:courseName/:quizId/name" element={<NameInputPage />} />
+                <Route path="/quiz/:courseName/:quizId/results/admin" element={<SubmissionsPage />} />
+                <Route path="/quiz/:courseName/:quizId/results/:userName" element={<SubmissionsPage />} />
+                <Route path="/quiz/:courseName/:quizId/thank-you/:userName" element={<ThankYouPage />} />
+                <Route path="/submissions" element={<SubmissionsPage />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+              <Toaster />
+              <Sonner />
+            </div>
+          </TooltipProvider>
+        </QueryClientProvider>
+      </Router>
+    </QuizSettingsProvider>
+  </ThemeProvider>
 );
 
 export default App;
