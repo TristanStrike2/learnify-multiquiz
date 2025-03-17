@@ -5,8 +5,7 @@ interface QuizSettings {
   setNumberOfQuestions: (count: number) => void;
 }
 
-// Create the store using standard Zustand
-export const useQuizSettings = create<QuizSettings>((set) => ({
+export const useQuizSettings = create<QuizSettings>()((set) => ({
   numberOfQuestions: 15,
   setNumberOfQuestions: (count: number) => set({ numberOfQuestions: count }),
 }));
