@@ -431,7 +431,7 @@ export function SubmissionsPage() {
                 className="overflow-hidden transition-all duration-200 hover:shadow-lg hover:border-purple-200 dark:hover:border-purple-900/50"
               >
                 <CardHeader className="border-b bg-gradient-to-br from-purple-50 to-white dark:from-purple-950/20 dark:to-background">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between relative">
                     <div className="space-y-1">
                       <CardTitle className="flex items-center gap-2">
                         <User className="h-4 w-4" />
