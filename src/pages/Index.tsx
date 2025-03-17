@@ -45,22 +45,27 @@ export function IndexPage() {
   }, []);
 
   const handleGenerateCourse = async (text: string) => {
-    // Store the content first
-    setContent(text);
-    
-    // Generate the course with the provided text
-    const success = await generateCourse(text);
-    
-    if (!success) {
-      // Reset states if generation failed
-      setShowModuleContent(false);
-      setQuizState({
-        isActive: false,
-        currentQuestionIndex: 0,
-        answers: [],
+    try {
+      // Store the content first
+      setContent(text);
+      
+      // Generate the course
+      const success = await generateCourse(text);
+      
+      if (!success) {
+        toast({
+          title: "Error",
+          description: "Failed to generate course. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Error in handleGenerateCourse:', error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
       });
-      setCurrentModuleIndex(0);
-      setModuleResults({});
     }
   };
 
@@ -300,7 +305,10 @@ export function IndexPage() {
   const renderContent = () => {
     if (!course) {
       return (
-        <QuizGenerator onGenerate={handleGenerateCourse} isLoading={isLoading} />
+        <QuizGenerator
+          onSubmit={handleGenerateCourse}
+          isLoading={isLoading}
+        />
       );
     }
 
@@ -343,10 +351,47 @@ export function IndexPage() {
   };
 
   return (
-    <div className="container mx-auto p-6">
-      <div className="max-w-4xl mx-auto">
-        {renderContent()}
-      </div>
+    <div className="container max-w-7xl mx-auto py-8 px-4">
+      {!course ? (
+        <QuizGenerator
+          onSubmit={handleGenerateCourse}
+          isLoading={isLoading}
+        />
+      ) : showNameInput ? (
+        <div className="container max-w-xl mx-auto py-12">
+          <Card className="shadow-lg">
+            <CardHeader className="text-center pb-2">
+              <CardTitle className="text-3xl font-bold">Name Your Course</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="text-center space-y-2">
+                <p className="text-muted-foreground text-lg">
+                  Give your course a descriptive name before sharing
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Your course has {course.modules[0].questions.length} questions
+                </p>
+              </div>
+              <form onSubmit={handleNameSubmit} className="space-y-4">
+                <Input
+                  type="text"
+                  placeholder="Enter course name"
+                  className="text-lg py-6"
+                  required
+                  autoFocus
+                />
+                <Button type="submit" className="w-full py-6 text-lg">
+                  Create and Share Course
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
+      ) : (
+        <div className="max-w-4xl mx-auto">
+          {renderContent()}
+        </div>
+      )}
     </div>
   );
 }
