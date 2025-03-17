@@ -8,6 +8,8 @@ declare global {
 import { initializeApp } from 'firebase/app';
 import { getAnalytics } from 'firebase/analytics';
 import { getDatabase, ref, set, onValue, off, get } from 'firebase/database';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { Module } from '@/types/quiz';
 
 // Debug function to safely log environment variables
 const debugEnvVariables = () => {
@@ -92,38 +94,70 @@ const checkDatabase = () => {
 };
 
 // Store quiz data
-export const storeQuizData = async (
-  quizId: string,
-  courseName: string,
-  modules: any[]
-) => {
-  checkDatabase();
+export async function storeQuizData(quizId: string, courseName: string, modules: Module[]) {
   try {
-    const quizRef = ref(database!, `quizzes/${quizId}`);
-    await set(quizRef, {
+    console.log('Storing quiz data:', {
+      quizId,
+      courseName,
+      moduleCount: modules.length,
+      firstModuleQuestions: modules[0]?.questions?.length
+    });
+    
+    const quizRef = doc(database!, 'quizzes', quizId);
+    const quizData = {
       courseName,
       modules,
-      createdAt: Date.now()
-    });
+      numberOfQuestions: modules[0]?.questions?.length || 0,
+      createdAt: serverTimestamp()
+    };
+    
+    await setDoc(quizRef, quizData);
+    console.log('Successfully stored quiz data');
+    
     return true;
   } catch (error) {
-    console.error('Error storing quiz data:', error);
+    console.error('Error storing quiz data:', {
+      error,
+      stack: error instanceof Error ? error.stack : undefined,
+      quizId,
+      courseName
+    });
     throw error;
   }
-};
+}
 
 // Get shared quiz
-export const getSharedQuiz = async (quizId: string) => {
-  checkDatabase();
+export async function getSharedQuiz(quizId: string) {
   try {
-    const quizRef = ref(database!, `quizzes/${quizId}`);
-    const snapshot = await get(quizRef);
-    return snapshot.val();
+    console.log('Fetching shared quiz:', quizId);
+    const quizRef = doc(database!, 'quizzes', quizId);
+    const quizDoc = await getDoc(quizRef);
+    
+    if (!quizDoc.exists()) {
+      console.error('Quiz document not found:', quizId);
+      return null;
+    }
+    
+    const quizData = quizDoc.data();
+    console.log('Retrieved quiz data:', {
+      id: quizId,
+      exists: quizDoc.exists(),
+      dataFields: Object.keys(quizData || {}),
+      hasModules: Boolean(quizData?.modules),
+      moduleCount: quizData?.modules?.length,
+      numberOfQuestions: quizData?.numberOfQuestions
+    });
+    
+    return quizData;
   } catch (error) {
-    console.error('Error getting shared quiz:', error);
-    return null;
+    console.error('Error fetching shared quiz:', {
+      error,
+      stack: error instanceof Error ? error.stack : undefined,
+      quizId
+    });
+    throw error;
   }
-};
+}
 
 // Store quiz submission
 export const storeQuizSubmission = async (
@@ -202,6 +236,7 @@ export const submitQuizResults = async (
       results: {
         courseName: quiz.courseName,
         modules: quiz.modules,
+        numberOfQuestions: quiz.numberOfQuestions,
         moduleId: moduleResult.moduleId,
         totalQuestions: moduleResult.totalQuestions,
         correctAnswers: moduleResult.correctAnswers,

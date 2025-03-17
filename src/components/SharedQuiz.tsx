@@ -30,10 +30,23 @@ export function SharedQuiz() {
       if (!quizId) return;
       
       try {
+        console.log('Loading quiz with ID:', quizId);
         const quizData = await getSharedQuiz(quizId);
+        console.log('Received quiz data:', quizData);
+        
         if (quizData) {
+          // Validate quiz data structure
+          console.log('Quiz data validation:', {
+            hasModules: Boolean(quizData.modules),
+            moduleCount: quizData.modules?.length,
+            firstModuleQuestions: quizData.modules?.[0]?.questions?.length,
+            numberOfQuestions: quizData.numberOfQuestions,
+            courseName: quizData.courseName
+          });
+
           setQuiz(quizData);
         } else {
+          console.error('Quiz data is null or undefined');
           toast({
             title: 'Quiz Not Found',
             description: 'The quiz you are looking for does not exist.',
@@ -43,6 +56,11 @@ export function SharedQuiz() {
         }
       } catch (error) {
         console.error('Error loading quiz:', error);
+        console.error('Error details:', {
+          error,
+          stack: error instanceof Error ? error.stack : undefined,
+          quizId
+        });
         toast({
           title: 'Error',
           description: 'Failed to load the quiz. Please try again.',
@@ -72,6 +90,12 @@ export function SharedQuiz() {
 
   const handleStartQuestions = () => {
     if (!quiz || !quiz.modules[0] || !quiz.modules[0].questions) {
+      console.error('Invalid quiz data structure:', {
+        quiz: Boolean(quiz),
+        hasModules: quiz?.modules?.length > 0,
+        hasQuestions: quiz?.modules?.[0]?.questions?.length,
+        expectedQuestions: quiz?.numberOfQuestions
+      });
       toast({
         title: 'Error',
         description: 'Failed to start quiz. Please try again.',
@@ -80,8 +104,21 @@ export function SharedQuiz() {
       return;
     }
 
+    // Log quiz structure before validation
+    console.log('Quiz structure before starting:', {
+      courseName: quiz.courseName,
+      moduleCount: quiz.modules.length,
+      firstModuleQuestions: quiz.modules[0].questions.length,
+      expectedQuestions: quiz.numberOfQuestions,
+      questionSample: quiz.modules[0].questions[0]
+    });
+
     // Verify we have the correct number of questions
     if (quiz.modules[0].questions.length !== quiz.numberOfQuestions) {
+      console.error('Question count mismatch:', {
+        actual: quiz.modules[0].questions.length,
+        expected: quiz.numberOfQuestions
+      });
       toast({
         title: 'Error',
         description: 'Quiz configuration error. Please contact support.',
@@ -277,7 +314,7 @@ export function SharedQuiz() {
             <div className="prose dark:prose-invert max-w-none">
               <div className="text-center mb-6">
                 <p className="text-muted-foreground">
-                  30 multiple-choice questions • Take your time to read the content below
+                  {quiz.numberOfQuestions} multiple-choice questions • Take your time to read the content below
                 </p>
               </div>
               <div className="space-y-4">
