@@ -124,33 +124,35 @@ function QuizResultsModal({
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden bg-gradient-to-br from-white to-purple-50/30 dark:from-background dark:to-purple-950/10">
-        <div className="flex flex-col space-y-6">
-          <div className="flex items-start justify-between">
-            <DialogHeader>
-              <div className="flex items-center gap-2">
-                <User className="h-6 w-6 text-purple-600" />
+        <div className="flex flex-col space-y-8">
+          <div className="flex items-start justify-between gap-6">
+            <DialogHeader className="flex-1">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-purple-100 dark:bg-purple-900/50 rounded-lg">
+                  <User className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+                </div>
                 <div>
                   <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
                     {submission.userName}'s Quiz Results
                   </DialogTitle>
-                  <DialogDescription className="text-muted-foreground">
+                  <DialogDescription className="text-muted-foreground mt-1">
                     Completed on {format(getValidDate(submission.timestamp), 'PPP')}
                   </DialogDescription>
                 </div>
               </div>
             </DialogHeader>
 
-            <div className="flex items-center gap-6 px-6 py-3 rounded-lg bg-gradient-to-br from-purple-50 to-white dark:from-purple-950/20 dark:to-background border border-purple-100 dark:border-purple-900/50">
+            <div className="flex items-center gap-8 px-8 py-4 rounded-lg bg-gradient-to-br from-purple-50 to-white dark:from-purple-950/20 dark:to-background border border-purple-100 dark:border-purple-900/50">
               <div>
-                <p className="text-sm font-medium text-purple-800 dark:text-purple-200">Score</p>
-                <p className="text-xl font-bold text-purple-600 dark:text-purple-400">
+                <p className="text-sm font-medium text-purple-800 dark:text-purple-200 mb-1">Score</p>
+                <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
                   {submission.results.correctAnswers} / {submission.results.totalQuestions}
                 </p>
               </div>
-              <div className="h-12 w-px bg-purple-200 dark:bg-purple-800" />
+              <div className="h-14 w-px bg-purple-200 dark:bg-purple-800" />
               <div>
-                <p className="text-sm font-medium text-purple-800 dark:text-purple-200">Percentage</p>
-                <p className="text-xl font-bold text-purple-600 dark:text-purple-400">
+                <p className="text-sm font-medium text-purple-800 dark:text-purple-200 mb-1">Percentage</p>
+                <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
                   {percentage}%
                 </p>
               </div>
