@@ -232,7 +232,7 @@ function QuizCard({ quiz, type, onArchive, onUnarchive, onView }: QuizCardProps)
 
       <div className="relative p-6 flex items-start gap-6">
         {/* Left section - Title and metadata */}
-        <div className="flex-1">
+        <div className="flex-1 relative">
           <h3 className="text-xl font-semibold tracking-tight mb-2 group-hover:text-primary transition-colors bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
             {quiz.courseName}
           </h3>
@@ -240,28 +240,28 @@ function QuizCard({ quiz, type, onArchive, onUnarchive, onView }: QuizCardProps)
             <Clock className="h-4 w-4 text-purple-500" />
             Created {format(quiz.createdAt.toDate(), 'PPP')}
           </p>
-          
-          {/* Hover message */}
-          <div className="absolute right-[340px] top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none">
-            <div className="bg-popover/95 rounded-lg shadow-lg px-3 py-2 text-sm text-popover-foreground border min-w-[140px] text-center">
-              {averageScore !== null ? (
-                <div className="space-y-0.5">
-                  <div className="font-medium">
-                    {Math.round(quiz.numberOfQuestions * (averageScore / 100))} / {quiz.numberOfQuestions}
-                  </div>
-                  <div className={cn(
-                    "text-sm font-medium",
-                    averageScore >= 80 ? "text-green-500" :
-                    averageScore >= 60 ? "text-yellow-500" :
-                    "text-red-500"
-                  )}>
-                    {averageScore}% Success
-                  </div>
+        </div>
+
+        {/* Hover message - positioned in the middle */}
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none z-10">
+          <div className="bg-popover/95 rounded-lg shadow-lg px-3 py-2 text-sm text-popover-foreground border min-w-[140px] text-center">
+            {averageScore !== null ? (
+              <div className="space-y-0.5">
+                <div className="font-medium">
+                  {Math.round(quiz.numberOfQuestions * (averageScore / 100))} / {quiz.numberOfQuestions}
                 </div>
-              ) : (
-                <div className="font-medium">No Data</div>
-              )}
-            </div>
+                <div className={cn(
+                  "text-sm font-medium",
+                  averageScore >= 80 ? "text-green-500" :
+                  averageScore >= 60 ? "text-yellow-500" :
+                  "text-red-500"
+                )}>
+                  {averageScore}% Success
+                </div>
+              </div>
+            ) : (
+              <div className="font-medium">No Data</div>
+            )}
           </div>
         </div>
 
