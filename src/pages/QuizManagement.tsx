@@ -244,9 +244,9 @@ function QuizCard({ quiz, type, onArchive, onUnarchive, onView }: QuizCardProps)
 
         {/* Hover message - positioned in the middle */}
         <div className="absolute left-[35%] top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none z-10">
-          <div className="bg-popover/95 rounded-lg shadow-lg px-3 py-2 text-sm text-popover-foreground border min-w-[140px] text-center">
+          <div className="bg-popover/95 rounded-md shadow-lg px-2.5 py-1.5 text-sm text-popover-foreground border min-w-[80px] text-center">
             {averageScore !== null ? (
-              <div className="font-medium text-teal-500 dark:text-teal-400">
+              <div className="font-medium text-teal-500 dark:text-teal-400 whitespace-nowrap">
                 {Math.round(quiz.numberOfQuestions * (averageScore / 100))} / {quiz.numberOfQuestions}
               </div>
             ) : (
