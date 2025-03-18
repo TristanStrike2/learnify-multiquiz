@@ -164,7 +164,7 @@ export function SharedQuiz() {
     setIsSubmitting(true);
     try {
       const result = calculateScore();
-      await submitQuizResults(quizId!, userName, { [quiz.modules[0].id]: result });
+      await submitQuizResults(quizId!, userName, result);
       setQuizComplete(true);
       toast({
         title: 'Quiz Completed!',

@@ -230,6 +230,30 @@ function QuizCard({ quiz, type, onArchive, onUnarchive, onView }: QuizCardProps)
       {/* Decorative gradient background */}
       <div className="absolute inset-0 bg-gradient-to-r from-purple-500/5 via-transparent to-blue-500/5 group-hover:opacity-75 transition-opacity" />
 
+      {/* Hover overlay with score information */}
+      <div className="absolute inset-0 bg-gradient-to-br from-black/60 to-black/40 opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center">
+        <div className="text-center text-white transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
+          {averageScore !== null ? (
+            <>
+              <div className="text-4xl font-bold mb-2">
+                {Math.round(quiz.numberOfQuestions * (averageScore / 100))} / {quiz.numberOfQuestions}
+              </div>
+              <div className="text-lg opacity-90">Questions Correct</div>
+              <div className={cn(
+                "text-2xl font-semibold mt-2",
+                averageScore >= 80 ? "text-green-400" :
+                averageScore >= 60 ? "text-yellow-400" :
+                "text-red-400"
+              )}>
+                {averageScore}% Success Rate
+              </div>
+            </>
+          ) : (
+            <div className="text-2xl font-semibold opacity-90">No Submissions Yet</div>
+          )}
+        </div>
+      </div>
+
       <div className="relative p-6 flex items-start gap-6">
         {/* Left section - Title and metadata */}
         <div className="flex-1">
@@ -333,18 +357,37 @@ function QuizCard({ quiz, type, onArchive, onUnarchive, onView }: QuizCardProps)
           );
         })}
         <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover/progress:opacity-100 transition-all duration-200 pointer-events-none">
-          <div className="bg-popover rounded-lg shadow-lg px-3 py-2 text-sm text-popover-foreground border">
-            <div className="font-medium mb-1">Question Success Rate</div>
-            <div className="text-muted-foreground">
-              {averageScore !== null 
-                ? `${Math.round(quiz.numberOfQuestions * (averageScore / 100))} of ${quiz.numberOfQuestions} questions answered correctly on average`
-                : 'No submissions yet'}
-            </div>
-            {averageScore !== null && (
-              <div className="text-xs mt-1 text-muted-foreground">
-                Average score: {averageScore}%
+          <div className="bg-popover rounded-lg shadow-lg px-4 py-3 text-sm text-popover-foreground border">
+            <div className="font-medium mb-2">Question Success Rate</div>
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-sm bg-teal-500/70 dark:bg-teal-400/70" />
+                <span className="text-muted-foreground">
+                  {averageScore !== null 
+                    ? `${Math.round(quiz.numberOfQuestions * (averageScore / 100))} of ${quiz.numberOfQuestions} questions`
+                    : 'No data available'}
+                </span>
               </div>
-            )}
+              {averageScore !== null && (
+                <>
+                  <div className="flex items-center justify-between text-muted-foreground">
+                    <span>Average Score:</span>
+                    <span className={cn(
+                      "font-medium",
+                      averageScore >= 80 ? "text-green-600 dark:text-green-400" :
+                      averageScore >= 60 ? "text-yellow-600 dark:text-yellow-400" :
+                      "text-red-600 dark:text-red-400"
+                    )}>
+                      {averageScore}%
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-muted-foreground">
+                    <span>Total Submissions:</span>
+                    <span className="font-medium">{submissionsCount}</span>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </div>

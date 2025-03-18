@@ -343,49 +343,28 @@ export async function submitQuizResults(quizId: string, userName: string, result
       throw new Error('Invalid results data');
     }
 
-    // Handle both flat and nested result structures
-    const moduleResults = Object.values(results)[0] || results;
-    
-    if (!moduleResults || typeof moduleResults !== 'object') {
-      throw new Error('Invalid module results data');
+    // Validate required fields
+    const requiredFields = ['totalQuestions', 'correctAnswers', 'incorrectAnswers', 'moduleId', 'questionsWithAnswers'];
+    const missingFields = requiredFields.filter(field => !results[field]);
+    if (missingFields.length > 0) {
+      throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
     }
-
-    // Log the incoming results structure
-    console.log('Processing quiz results:', {
-      quizId,
-      userName,
-      resultsStructure: {
-        isNested: Object.values(results)[0] !== results,
-        hasModuleId: Boolean(moduleResults.moduleId),
-        moduleId: moduleResults.moduleId,
-        totalQuestions: moduleResults.totalQuestions
-      }
-    });
-
-    // Ensure moduleId exists
-    const moduleId = moduleResults.moduleId || quiz.modules[0]?.id || `module_${Date.now()}`;
 
     // Create a properly structured submission document
     const submissionData = {
       userName,
       timestamp: serverTimestamp(),
       results: {
-        moduleId,
-        totalQuestions: moduleResults.totalQuestions,
-        correctAnswers: moduleResults.correctAnswers,
-        incorrectAnswers: moduleResults.incorrectAnswers,
-        questionsWithAnswers: moduleResults.questionsWithAnswers || [],
+        moduleId: results.moduleId,
+        totalQuestions: results.totalQuestions,
+        correctAnswers: results.correctAnswers,
+        incorrectAnswers: results.incorrectAnswers,
+        questionsWithAnswers: results.questionsWithAnswers,
         courseName: quiz.courseName,
+        modules: quiz.modules,
         submittedAt: serverTimestamp()
       }
     };
-
-    // Validate required fields
-    const requiredFields = ['totalQuestions', 'correctAnswers', 'incorrectAnswers'];
-    const missingFields = requiredFields.filter(field => !moduleResults[field]);
-    if (missingFields.length > 0) {
-      throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
-    }
 
     // Generate a unique submission ID using timestamp and a random string
     const timestamp = Date.now();
