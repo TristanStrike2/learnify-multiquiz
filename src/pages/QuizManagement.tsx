@@ -246,18 +246,8 @@ function QuizCard({ quiz, type, onArchive, onUnarchive, onView }: QuizCardProps)
         <div className="absolute left-[35%] top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none z-10">
           <div className="bg-popover/95 rounded-lg shadow-lg px-3 py-2 text-sm text-popover-foreground border min-w-[140px] text-center">
             {averageScore !== null ? (
-              <div className="space-y-0.5">
-                <div className="font-medium">
-                  {Math.round(quiz.numberOfQuestions * (averageScore / 100))} / {quiz.numberOfQuestions}
-                </div>
-                <div className={cn(
-                  "text-sm font-medium",
-                  averageScore >= 80 ? "text-green-500" :
-                  averageScore >= 60 ? "text-yellow-500" :
-                  "text-red-500"
-                )}>
-                  {averageScore}% Success
-                </div>
+              <div className="font-medium">
+                {Math.round(quiz.numberOfQuestions * (averageScore / 100))} / {quiz.numberOfQuestions} questions
               </div>
             ) : (
               <div className="font-medium">No Data</div>
