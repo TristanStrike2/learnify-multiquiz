@@ -387,7 +387,12 @@ export async function submitQuizResults(quizId: string, userName: string, result
       throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
     }
 
-    const submissionRef = doc(collection(db, `quizzes/${quizId}/submissions`), `${Date.now()}_${userName}`);
+    // Generate a unique submission ID using timestamp and a random string
+    const timestamp = Date.now();
+    const randomStr = Math.random().toString(36).substring(2, 8);
+    const submissionId = `${timestamp}_${randomStr}`;
+
+    const submissionRef = doc(collection(db, `quizzes/${quizId}/submissions`), submissionId);
     await setDoc(submissionRef, submissionData);
     return true;
   } catch (error) {
@@ -420,7 +425,10 @@ export function subscribeToQuizSubmissions(
   const submissionsQuery = query(submissionsRef, orderBy('timestamp', 'desc'));
   
   return onSnapshot(submissionsQuery, (snapshot) => {
-    const submissions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const submissions = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
     callback(submissions);
   });
 }

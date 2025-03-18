@@ -238,7 +238,7 @@ function QuizResultsModal({
 export function SubmissionsPage() {
   const { quizId, userName, courseName } = useParams();
   const location = useLocation();
-  const [submissions, setSubmissions] = useState<QuizSubmission[]>([]);
+  const [submissions, setSubmissions] = useState<(QuizSubmission & { id: string })[]>([]);
   const [showShareModal, setShowShareModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [submissionToDelete, setSubmissionToDelete] = useState<{ id: string; userName: string } | null>(null);
@@ -247,6 +247,7 @@ export function SubmissionsPage() {
   const navigate = useNavigate();
   const [quiz, setQuiz] = useState<any>(null);
   const [selectedSubmission, setSelectedSubmission] = useState<QuizSubmission | null>(null);
+  const [averageScore, setAverageScore] = useState<number | null>(null);
   
   // More robust admin check
   const isAdmin = useMemo(() => {
@@ -267,13 +268,28 @@ export function SubmissionsPage() {
   useEffect(() => {
     if (!quizId) return;
 
-    // Subscribe to real-time updates
-    const unsubscribe = subscribeToQuizSubmissions(quizId, (newSubmissions) => {
-      // Cast the submissions to the correct type
-      setSubmissions(newSubmissions as QuizSubmission[]);
+    const unsubscribe = subscribeToQuizSubmissions(quizId, (submissions) => {
+      // Transform submissions to include their IDs
+      const submissionsWithIds = submissions.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as (QuizSubmission & { id: string })[];
+      
+      setSubmissions(submissionsWithIds);
+      
+      // Calculate average score
+      if (submissionsWithIds.length > 0) {
+        const totalScore = submissionsWithIds.reduce((acc, sub) => {
+          const correctAnswers = sub.results?.correctAnswers || 0;
+          const totalQuestions = sub.results?.totalQuestions || 0;
+          return acc + (correctAnswers / totalQuestions) * 100;
+        }, 0);
+        setAverageScore(Math.round(totalScore / submissionsWithIds.length));
+      } else {
+        setAverageScore(null);
+      }
     });
 
-    // Cleanup subscription on unmount
     return () => unsubscribe();
   }, [quizId]);
 
@@ -345,24 +361,6 @@ export function SubmissionsPage() {
         variant: 'destructive',
       });
     }
-  };
-
-  const getAverageScore = () => {
-    if (!submissions.length) return 0;
-    
-    // Filter out submissions with invalid scores
-    const validSubmissions = submissions.filter(
-      sub => sub.results && 
-      typeof sub.results.correctAnswers === 'number' && 
-      typeof sub.results.totalQuestions === 'number' && 
-      sub.results.totalQuestions > 0
-    );
-    
-    if (!validSubmissions.length) return 0;
-    
-    const totalPercentage = validSubmissions.reduce((acc, sub) => 
-      acc + (sub.results.correctAnswers / sub.results.totalQuestions) * 100, 0);
-    return Math.round(totalPercentage / validSubmissions.length);
   };
 
   const handleDownloadUserPDF = async (submission: QuizSubmission) => {
@@ -563,7 +561,7 @@ export function SubmissionsPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-4xl font-bold text-blue-600 dark:text-blue-400">
-                  {getAverageScore()}%
+                  {averageScore ? `${averageScore}%` : 'N/A'}
                 </p>
               </CardContent>
             </Card>
@@ -599,7 +597,7 @@ export function SubmissionsPage() {
                 </CardHeader>
               </Card>
             ) : (
-              submissions.map((submission, index) => {
+              submissions.map((submission) => {
                 const percentage = submission.results && 
                   typeof submission.results.correctAnswers === 'number' && 
                   typeof submission.results.totalQuestions === 'number' && 
@@ -607,11 +605,9 @@ export function SubmissionsPage() {
                     ? Math.round((submission.results.correctAnswers / submission.results.totalQuestions) * 100)
                     : 0;
                 
-                const submissionId = `${submission.timestamp}_${submission.userName}`;
-                
                 return (
                   <Card 
-                    key={submissionId}
+                    key={submission.id}
                     className="overflow-hidden transition-all duration-200 hover:shadow-lg hover:border-purple-200 dark:hover:border-purple-900/50"
                   >
                     <CardHeader className="border-b bg-gradient-to-br from-purple-50 to-white dark:from-purple-950/20 dark:to-background">
@@ -631,7 +627,7 @@ export function SubmissionsPage() {
                             variant="ghost"
                             size="icon"
                             className="absolute top-2 right-2 text-red-500 hover:text-red-50 hover:bg-red-500 dark:text-red-400 dark:hover:text-red-50 dark:hover:bg-red-500 transition-all duration-200 p-2.5 h-auto w-auto"
-                            onClick={() => handleDeleteClick(submissionId, submission.userName)}
+                            onClick={() => handleDeleteClick(submission.id, submission.userName)}
                           >
                             <Trash2 className="h-6 w-6" />
                           </Button>
