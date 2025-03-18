@@ -243,25 +243,27 @@ function QuizCard({ quiz, type, onArchive, onUnarchive, onView }: QuizCardProps)
         </div>
 
         {/* Hover score overlay */}
-        <div className="h-16 relative rounded-lg overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-blue-500/10 opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center">
-            {averageScore !== null ? (
-              <div className="flex items-center gap-3 text-foreground/90">
-                <div className="text-lg font-semibold">
-                  {Math.round(quiz.numberOfQuestions * (averageScore / 100))} / {quiz.numberOfQuestions}
+        <div className="h-0 overflow-visible relative">
+          <div className="absolute inset-x-0 -top-2 opacity-0 group-hover:opacity-100 transition-all duration-300">
+            <div className="bg-gradient-to-r from-purple-100 to-blue-100 dark:from-purple-950/20 dark:to-blue-950/20 rounded-lg py-2 px-3 flex items-center justify-center shadow-sm">
+              {averageScore !== null ? (
+                <div className="flex items-center gap-3">
+                  <div className="text-sm font-medium text-foreground/90">
+                    {Math.round(quiz.numberOfQuestions * (averageScore / 100))} / {quiz.numberOfQuestions}
+                  </div>
+                  <div className={cn(
+                    "text-sm font-medium",
+                    averageScore >= 80 ? "text-green-600 dark:text-green-400" :
+                    averageScore >= 60 ? "text-yellow-600 dark:text-yellow-400" :
+                    "text-red-600 dark:text-red-400"
+                  )}>
+                    ({averageScore}% success)
+                  </div>
                 </div>
-                <div className={cn(
-                  "text-lg font-medium",
-                  averageScore >= 80 ? "text-green-600 dark:text-green-400" :
-                  averageScore >= 60 ? "text-yellow-600 dark:text-yellow-400" :
-                  "text-red-600 dark:text-red-400"
-                )}>
-                  ({averageScore}%)
-                </div>
-              </div>
-            ) : (
-              <div className="text-sm font-medium text-muted-foreground">No submissions yet</div>
-            )}
+              ) : (
+                <div className="text-sm font-medium text-muted-foreground">No submissions yet</div>
+              )}
+            </div>
           </div>
         </div>
 
