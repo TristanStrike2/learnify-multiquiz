@@ -13,6 +13,7 @@ import { ThankYouPage } from '@/pages/ThankYou';
 import NameInputPage from '@/pages/NameInput';
 import { QuizSettingsProvider } from '@/contexts/QuizSettingsContext';
 import { QuizManagementPage } from '@/pages/QuizManagement';
+import { AnimatedLayout } from '@/components/AnimatedLayout';
 
 const queryClient = new QueryClient();
 
@@ -29,17 +30,19 @@ const App = () => (
                   <ThemeToggle />
                 </div>
               </header>
-              <Routes>
-                <Route path="/" element={<QuizManagementPage />} />
-                <Route path="/create" element={<IndexPage />} />
-                <Route path="/quiz/:courseName/:quizId" element={<SharedQuiz />} />
-                <Route path="/quiz/:courseName/:quizId/name" element={<NameInputPage />} />
-                <Route path="/quiz/:courseName/:quizId/results/admin" element={<SubmissionsPage />} />
-                <Route path="/quiz/:courseName/:quizId/results/:userName" element={<SubmissionsPage />} />
-                <Route path="/quiz/:courseName/:quizId/thank-you/:userName" element={<ThankYouPage />} />
-                <Route path="/submissions" element={<SubmissionsPage />} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
+              <AnimatedLayout>
+                <Routes>
+                  <Route path="/" element={<QuizManagementPage />} />
+                  <Route path="/admin/manage" element={<QuizManagementPage />} />
+                  <Route path="/admin/create" element={<IndexPage />} />
+                  <Route path="/admin/submissions/:quizId" element={<SubmissionsPage />} />
+                  <Route path="/quiz/:courseName/:quizId" element={<SharedQuiz />} />
+                  <Route path="/quiz/:courseName/:quizId/name" element={<NameInputPage />} />
+                  <Route path="/quiz/:courseName/:quizId/results/:userName" element={<SubmissionsPage />} />
+                  <Route path="/quiz/:courseName/:quizId/thank-you/:userName" element={<ThankYouPage />} />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </AnimatedLayout>
               <Toaster />
               <Sonner />
             </div>

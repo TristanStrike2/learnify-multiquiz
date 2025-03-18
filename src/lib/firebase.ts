@@ -92,32 +92,103 @@ const ensureFirestore = () => {
 };
 
 // Store quiz data
-export async function storeQuizData(quizId: string, courseName: string, modules: Module[]) {
+export async function storeQuizData(quizId: string, courseName: string, modules: Module[], numberOfQuestions: number) {
   try {
     const db = ensureFirestore();
 
-    // Validate modules have IDs
-    const modulesWithIds = modules.map((module, index) => ({
-      ...module,
-      id: module.id || `module_${index + 1}`
-    }));
+    // Log input parameters
+    console.log('storeQuizData input:', {
+      quizId,
+      courseName,
+      modulesLength: modules?.length,
+      numberOfQuestions,
+      firstModule: modules?.[0] ? {
+        id: modules[0].id,
+        title: modules[0].title,
+        questionsLength: modules[0].questions?.length,
+        firstQuestion: modules[0].questions?.[0]
+      } : null
+    });
+
+    // Validate inputs
+    if (!quizId || !courseName || !modules || !Array.isArray(modules) || modules.length === 0) {
+      throw new Error('Invalid input parameters');
+    }
+
+    // Deep validation and cleaning of modules
+    const modulesWithIds = modules.map((module, index) => {
+      if (!module.questions || !Array.isArray(module.questions)) {
+        throw new Error(`Module at index ${index} has invalid questions`);
+      }
+
+      // Deep validation of questions
+      const validatedQuestions = module.questions.map((q, qIndex) => {
+        // Log any undefined values in the question
+        const undefinedFields = Object.entries(q).filter(([_, value]) => value === undefined);
+        if (undefinedFields.length > 0) {
+          console.error(`Question ${qIndex} has undefined fields:`, undefinedFields);
+        }
+
+        if (!q.options || !Array.isArray(q.options)) {
+          throw new Error(`Question ${qIndex} in module ${index} has invalid options`);
+        }
+
+        // Validate and clean options
+        const validatedOptions = q.options.map((opt, i) => {
+          if (!opt || typeof opt !== 'object') {
+            throw new Error(`Invalid option at index ${i} in question ${qIndex}`);
+          }
+
+          // Ensure option has required fields
+          return {
+            id: opt.id || String.fromCharCode(65 + i),
+            text: opt.text || `Option ${String.fromCharCode(65 + i)}`
+          };
+        });
+
+        // Return cleaned question object
+        return {
+          id: q.id || `q${qIndex + 1}`,
+          text: q.text || `Question ${qIndex + 1}`,
+          options: validatedOptions,
+          correctOptionId: q.correctOptionId || validatedOptions[0].id
+        };
+      });
+
+      // Return cleaned module object
+      return {
+        id: module.id || `module_${index + 1}`,
+        title: module.title || `Module ${index + 1}`,
+        content: module.content || '',
+        questions: validatedQuestions
+      };
+    });
 
     const quizData = {
-      courseName,
+      courseName: courseName || 'Untitled Course',
       modules: modulesWithIds,
-      numberOfQuestions: modulesWithIds[0]?.questions?.length || 0,
+      numberOfQuestions: numberOfQuestions || modulesWithIds[0].questions.length,
       createdAt: serverTimestamp(),
       isArchived: false,
       archivedAt: null
     };
     
-    console.log('Storing quiz data:', {
+    // Log the final data structure before saving
+    console.log('Final quiz data structure:', {
       quizId,
-      courseName,
-      moduleCount: modulesWithIds.length,
-      firstModuleId: modulesWithIds[0]?.id,
-      questionCount: quizData.numberOfQuestions
+      courseName: quizData.courseName,
+      moduleCount: quizData.modules.length,
+      firstModuleId: quizData.modules[0]?.id,
+      questionCount: quizData.numberOfQuestions,
+      timestamp: quizData.createdAt,
+      fullData: JSON.stringify(quizData, null, 2)
     });
+
+    // Validate no undefined values exist in the final structure
+    const stringified = JSON.stringify(quizData);
+    if (stringified.includes('undefined')) {
+      throw new Error('Quiz data contains undefined values after validation');
+    }
     
     const quizRef = doc(collection(db, 'quizzes'), quizId);
     await setDoc(quizRef, quizData);
@@ -363,6 +434,55 @@ export async function deleteQuizSubmission(quizId: string, submissionId: string)
     return true;
   } catch (error) {
     console.error('Error deleting quiz submission:', error);
+    throw error;
+  }
+}
+
+// Delete quiz document
+export async function deleteQuiz(quizId: string) {
+  try {
+    const db = ensureFirestore();
+    const quizRef = doc(db, `quizzes/${quizId}`);
+    
+    // First verify the quiz exists and is archived
+    const quizDoc = await getDoc(quizRef);
+    if (!quizDoc.exists()) {
+      console.error('Quiz not found:', quizId);
+      throw new Error('Quiz not found');
+    }
+
+    const quizData = quizDoc.data();
+    if (!quizData.isArchived) {
+      console.error('Cannot delete unarchived quiz:', quizId);
+      throw new Error('Quiz must be archived before deletion');
+    }
+
+    // Get all submissions for this quiz
+    const submissionsRef = collection(db, `quizzes/${quizId}/submissions`);
+    const submissionsSnapshot = await getDocs(submissionsRef);
+    
+    // Delete all submissions first
+    console.log(`Deleting ${submissionsSnapshot.size} submissions for quiz:`, quizId);
+    const submissionDeletions = submissionsSnapshot.docs.map(async (doc) => {
+      try {
+        await deleteDoc(doc.ref);
+        console.log(`Deleted submission: ${doc.id}`);
+      } catch (error) {
+        console.error(`Failed to delete submission ${doc.id}:`, error);
+        throw error; // Propagate the error
+      }
+    });
+    
+    // Wait for all submission deletions to complete
+    await Promise.all(submissionDeletions);
+    
+    // Now delete the quiz document
+    console.log('Deleting quiz document:', quizId);
+    await deleteDoc(quizRef);
+    console.log('Successfully deleted quiz and all submissions:', quizId);
+    return true;
+  } catch (error) {
+    console.error('Error deleting quiz:', error);
     throw error;
   }
 } 

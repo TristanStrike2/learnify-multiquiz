@@ -20,6 +20,10 @@ service cloud.firestore {
         && submission.results is map;
     }
 
+    function isQuizArchived(quizId) {
+      return get(/databases/$(database)/documents/quizzes/$(quizId)).data.isArchived == true;
+    }
+
     // Quizzes collection rules
     match /quizzes/{quizId} {
       // Allow reading quizzes
@@ -28,16 +32,11 @@ service cloud.firestore {
       // Allow creating quizzes with validation
       allow create: if isValidQuiz(request.resource.data);
       
-      // Allow updates only for archiving/unarchiving
-      allow update: if isValidQuiz(request.resource.data) 
-        && (
-          // Only allow updating isArchived and archivedAt fields
-          request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(['isArchived', 'archivedAt'])
-        );
+      // Allow updates with validation
+      allow update: if isValidQuiz(request.resource.data);
       
-      // Disallow deletes
-      allow delete: if false;
+      // Allow deletion only if quiz exists and is archived
+      allow delete: if resource != null && resource.data.isArchived == true;
 
       // Submissions subcollection rules
       match /submissions/{submissionId} {
@@ -47,8 +46,8 @@ service cloud.firestore {
         // Allow creating submissions with validation
         allow create: if isValidSubmission(request.resource.data);
         
-        // Allow deletion only if the submission exists
-        allow delete: if resource != null;
+        // Allow deletion of submissions only if parent quiz is archived
+        allow delete: if isQuizArchived(quizId);
         
         // Disallow updates
         allow update: if false;

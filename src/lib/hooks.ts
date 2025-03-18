@@ -595,27 +595,97 @@ ${text}`;
       const convertedCourse: Course = {
         modules: parsedModules.map((m, moduleIndex) => ({
           id: `module${moduleIndex + 1}`,
-          title: m.title,
-          content: m.content,
-          questions: m.questions.map((q, questionIndex) => ({
-            id: `q${questionIndex + 1}`,
-            text: q.question,
-            options: q.options.map((opt, i) => ({
-              id: String.fromCharCode(65 + i), // A, B, C, D
-              text: opt
-            })),
-            correctOptionId: String.fromCharCode(65 + q.correctAnswerIndex) // A, B, C, D
-          }))
+          title: m.title || `Module ${moduleIndex + 1}`,
+          content: m.content || '',
+          questions: m.questions.map((q, questionIndex) => {
+            // Handle both API response formats
+            const questionText = q.question || q.text;
+            const options = q.options;
+            const correctAnswer = q.correctOptionId || q.correctAnswerIndex;
+
+            // Validate essential fields
+            if (!questionText || !options) {
+              console.error('Question missing required fields:', q);
+              throw new Error(`Question ${questionIndex + 1} is missing required fields`);
+            }
+
+            // Handle different option formats
+            let formattedOptions;
+            let correctOptionId;
+
+            if (Array.isArray(options) && typeof options[0] === 'string') {
+              // Handle format: ["option1", "option2", ...]
+              formattedOptions = options.map((opt, i) => ({
+                id: String.fromCharCode(65 + i),
+                text: opt
+              }));
+              correctOptionId = typeof correctAnswer === 'number' 
+                ? String.fromCharCode(65 + correctAnswer)
+                : correctAnswer;
+            } else if (Array.isArray(options) && typeof options[0] === 'object') {
+              // Handle format: [{id: "A", text: "option1"}, ...]
+              formattedOptions = options;
+              correctOptionId = correctAnswer;
+            } else {
+              throw new Error(`Invalid options format in question ${questionIndex + 1}`);
+            }
+
+            // Validate option count
+            if (formattedOptions.length !== 4) {
+              throw new Error(`Question ${questionIndex + 1} must have exactly 4 options`);
+            }
+
+            // Validate correctOptionId
+            if (!correctOptionId || !formattedOptions.some(opt => opt.id === correctOptionId)) {
+              console.error('Invalid correctOptionId:', { correctOptionId, options: formattedOptions });
+              throw new Error(`Invalid correctOptionId in question ${questionIndex + 1}`);
+            }
+
+            return {
+              id: q.id || `q${questionIndex + 1}`,
+              text: questionText,
+              options: formattedOptions,
+              correctOptionId: correctOptionId
+            };
+          })
         })),
-        numberOfQuestions
+        numberOfQuestions,
+        courseName: "untitled-course"
       };
+
+      // Validate the converted course structure
+      if (!convertedCourse.modules[0]?.questions?.length) {
+        throw new Error('Invalid course structure: no questions found');
+      }
+
+      // Log the converted course structure
+      console.log('Converted course structure:', {
+        courseName: convertedCourse.courseName,
+        numberOfQuestions: convertedCourse.numberOfQuestions,
+        moduleCount: convertedCourse.modules.length,
+        firstModule: convertedCourse.modules[0] ? {
+          id: convertedCourse.modules[0].id,
+          title: convertedCourse.modules[0].title,
+          questionCount: convertedCourse.modules[0].questions.length,
+          sampleQuestion: convertedCourse.modules[0].questions[0]
+        } : null
+      });
+
+      // Validate no undefined values in the structure
+      const stringified = JSON.stringify(convertedCourse);
+      if (stringified.includes('undefined')) {
+        throw new Error('Course data contains undefined values after conversion');
+      }
 
       // Store the generated course in localStorage
       localStorage.setItem('generatedModules', JSON.stringify(convertedCourse));
       
       // Create a temporary share link
-      const { quizId, urlSafeName } = await createShareLink("untitled-course", convertedCourse.modules);
+      const { quizId, urlSafeName } = await createShareLink(convertedCourse.courseName, convertedCourse.modules);
       
+      // Log the share link result
+      console.log('Share link created:', { quizId, urlSafeName });
+
       // Update course state
       setCourse(convertedCourse);
       

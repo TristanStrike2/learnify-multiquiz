@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { createShareLink } from '@/lib/shareLink';
+import { Course } from '@/types/quiz';
 
 export default function NameInputPage() {
   const [courseName, setCourseName] = useState('');
@@ -39,15 +40,25 @@ export default function NameInputPage() {
 
     try {
       // Get the stored modules from localStorage
-      const storedModules = localStorage.getItem('generatedModules');
-      if (!storedModules) {
+      const storedData = localStorage.getItem('generatedModules');
+      if (!storedData) {
         throw new Error('No modules found. Please generate the quiz again.');
       }
       
-      const modules = JSON.parse(storedModules);
+      // Parse the stored course data
+      const course = JSON.parse(storedData) as Course;
+      
+      // Update the course name
+      const updatedCourse = {
+        ...course,
+        courseName: courseName.trim()
+      };
       
       // Create a new share link with the proper course name and modules
-      const { quizId: newQuizId, urlSafeName } = await createShareLink(courseName, modules);
+      const { quizId: newQuizId, urlSafeName } = await createShareLink(
+        updatedCourse.courseName,
+        updatedCourse.modules
+      );
       
       // Clear the stored modules
       localStorage.removeItem('generatedModules');

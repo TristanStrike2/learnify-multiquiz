@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { generateSubmissionReport, generatePDF } from '@/lib/pdfGenerator';
-import { Download, Share2, Copy, CheckCircle2, FileText, User, Calendar, Trophy, PlusCircle, Trash2, Eye } from 'lucide-react';
+import { Download, Share2, Copy, CheckCircle2, FileText, User, Calendar, Trophy, PlusCircle, Trash2, Eye, ArrowLeft } from 'lucide-react';
 import { format } from 'date-fns';
 import { useToast } from '@/components/ui/use-toast';
 import { Progress } from '@/components/ui/progress';
@@ -491,267 +491,265 @@ export function SubmissionsPage() {
   };
 
   return (
-    <div className="container max-w-7xl mx-auto py-8 px-4">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
-        <div>
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-            Quiz Dashboard
-          </h1>
-          <p className="text-muted-foreground mt-2 text-lg">
-            Monitor quiz submissions and performance
-          </p>
-        </div>
-        <div className="flex flex-col sm:flex-row gap-4">
-          <Button 
-            onClick={() => {
-              // Clear any stored data
-              localStorage.removeItem('currentCourse');
-              localStorage.removeItem('moduleResults');
-              localStorage.removeItem('quizState');
-              // Navigate to home page
-              navigate('/');
-            }}
-            className="bg-green-600 hover:bg-green-700"
-          >
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Create New Quiz
-          </Button>
-          <div className="flex gap-4">
+    <div className="min-h-screen">
+      <div className="container max-w-7xl mx-auto py-8 px-4">
+        <div className="flex flex-col space-y-8">
+          <div>
             <Button 
-              onClick={handleDownloadPDF} 
-              disabled={!submissions.length}
-              className="bg-purple-600 hover:bg-purple-700"
+              onClick={() => navigate('/admin/manage')}
+              variant="outline"
+              className="border-purple-200 mb-6"
             >
-              <Download className="mr-2 h-4 w-4" />
-              Download Report
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to Hub
             </Button>
-            <Button onClick={handleShare} variant="outline" className="border-purple-200">
-              <Share2 className="mr-2 h-4 w-4" />
-              Share Quiz
-            </Button>
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+              <div>
+                <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+                  Quiz Results
+                </h1>
+                <p className="text-muted-foreground mt-2 text-lg">
+                  Track performance and engagement
+                </p>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-4">
+                <Button 
+                  onClick={handleDownloadPDF} 
+                  disabled={!submissions.length}
+                  className="bg-purple-600 hover:bg-purple-700"
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  Download Report
+                </Button>
+                <Button onClick={handleShare} variant="outline" className="border-purple-200">
+                  <Share2 className="mr-2 h-4 w-4" />
+                  Share Quiz
+                </Button>
+              </div>
+            </div>
           </div>
+
+          <div className="grid gap-6 md:grid-cols-3 mb-8">
+            <Card className="bg-gradient-to-br from-purple-50 to-white dark:from-purple-950/20 dark:to-background border-purple-100 dark:border-purple-900/50">
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-purple-100 dark:bg-purple-900/50 rounded-lg">
+                    <User className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+                  </div>
+                  <div>
+                    <CardTitle>Total Submissions</CardTitle>
+                    <CardDescription>Number of completed quizzes</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className="text-4xl font-bold text-purple-600 dark:text-purple-400">
+                  {submissions.length}
+                </p>
+              </CardContent>
+            </Card>
+            
+            <Card className="bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/20 dark:to-background border-blue-100 dark:border-blue-900/50">
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-blue-100 dark:bg-blue-900/50 rounded-lg">
+                    <Trophy className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <div>
+                    <CardTitle>Average Score</CardTitle>
+                    <CardDescription>Across all submissions</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className="text-4xl font-bold text-blue-600 dark:text-blue-400">
+                  {getAverageScore()}%
+                </p>
+              </CardContent>
+            </Card>
+            
+            <Card className="bg-gradient-to-br from-green-50 to-white dark:from-green-950/20 dark:to-background border-green-100 dark:border-green-900/50">
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-green-100 dark:bg-green-900/50 rounded-lg">
+                    <Calendar className="h-6 w-6 text-green-600 dark:text-green-400" />
+                  </div>
+                  <div>
+                    <CardTitle>Latest Submission</CardTitle>
+                    <CardDescription>Most recent quiz completion</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className="text-lg font-medium text-green-600 dark:text-green-400">
+                  {submissions.length > 0 
+                    ? format(getValidDate(submissions[0].timestamp), 'PPP')
+                    : 'No submissions yet'}
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {submissions.length === 0 ? (
+              <Card className="col-span-full bg-gradient-to-br from-gray-50 to-white dark:from-gray-950/20 dark:to-background">
+                <CardHeader className="text-center">
+                  <CardTitle>No Submissions Yet</CardTitle>
+                  <CardDescription>Share the quiz link to start receiving submissions</CardDescription>
+                </CardHeader>
+              </Card>
+            ) : (
+              submissions.map((submission, index) => {
+                const percentage = submission.results && 
+                  typeof submission.results.correctAnswers === 'number' && 
+                  typeof submission.results.totalQuestions === 'number' && 
+                  submission.results.totalQuestions > 0
+                    ? Math.round((submission.results.correctAnswers / submission.results.totalQuestions) * 100)
+                    : 0;
+                
+                const submissionId = `${submission.timestamp}_${submission.userName}`;
+                
+                return (
+                  <Card 
+                    key={submissionId}
+                    className="overflow-hidden transition-all duration-200 hover:shadow-lg hover:border-purple-200 dark:hover:border-purple-900/50"
+                  >
+                    <CardHeader className="border-b bg-gradient-to-br from-purple-50 to-white dark:from-purple-950/20 dark:to-background">
+                      <div className="flex items-center justify-between relative">
+                        <div className="space-y-1">
+                          <CardTitle className="flex items-center gap-2">
+                            <User className="h-4 w-4" />
+                            {submission.userName}
+                          </CardTitle>
+                          <CardDescription className="flex items-center gap-2">
+                            <Calendar className="h-4 w-4" />
+                            {format(getValidDate(submission.timestamp), 'PPP')}
+                          </CardDescription>
+                        </div>
+                        {isAdmin && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="absolute top-2 right-2 text-red-500 hover:text-red-50 hover:bg-red-500 dark:text-red-400 dark:hover:text-red-50 dark:hover:bg-red-500 transition-all duration-200 p-2.5 h-auto w-auto"
+                            onClick={() => handleDeleteClick(submissionId, submission.userName)}
+                          >
+                            <Trash2 className="h-6 w-6" />
+                          </Button>
+                        )}
+                      </div>
+                    </CardHeader>
+                    <CardContent className="pt-6">
+                      <div className="space-y-4">
+                        <div>
+                          <div className="flex justify-between items-center mb-2">
+                            <span className="text-sm text-muted-foreground">Score</span>
+                            <span className={`font-medium ${getScoreColor(percentage)}`}>
+                              {submission.results.correctAnswers}/{submission.results.totalQuestions}
+                            </span>
+                          </div>
+                          <Progress 
+                            value={percentage} 
+                            className="h-2"
+                          />
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-muted-foreground">Percentage</span>
+                          <span className={`text-lg font-semibold ${getScoreColor(percentage)}`}>
+                            {percentage}%
+                          </span>
+                        </div>
+                      </div>
+                    </CardContent>
+                    <CardFooter className="bg-gradient-to-br from-gray-50 to-white dark:from-gray-950/20 dark:to-background border-t flex justify-center gap-2 p-4">
+                      <Button 
+                        variant="outline" 
+                        className="w-auto px-6 hover:bg-purple-50 dark:hover:bg-purple-900/20 hover:text-purple-600 dark:hover:text-purple-400 transition-colors"
+                        onClick={() => handleViewResults(submission)}
+                      >
+                        <Eye className="mr-2 h-4 w-4" />
+                        View Results
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        className="w-auto px-6 hover:bg-purple-50 dark:hover:bg-purple-900/20 hover:text-purple-600 dark:hover:text-purple-400 transition-colors"
+                        onClick={() => handleDownloadUserPDF(submission)}
+                      >
+                        <FileText className="mr-2 h-4 w-4" />
+                        Download PDF
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                );
+              })
+            )}
+          </div>
+
+          <Dialog open={showShareModal} onOpenChange={setShowShareModal}>
+            <DialogContent className="sm:max-w-md bg-gradient-to-br from-white to-purple-50/30 dark:from-background dark:to-purple-950/10">
+              <DialogHeader>
+                <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+                  Share Quiz
+                </DialogTitle>
+                <DialogDescription className="text-muted-foreground">
+                  Share this quiz with others to collect their responses
+                </DialogDescription>
+              </DialogHeader>
+              <div className="flex flex-col gap-4">
+                <div className="p-4 rounded-lg bg-gradient-to-br from-purple-50 to-white dark:from-purple-950/20 dark:to-background border border-purple-100 dark:border-purple-900/50">
+                  <p className="text-sm font-medium text-purple-800 dark:text-purple-200 mb-2">Quiz Link</p>
+                  <button
+                    onClick={handleCopyLink}
+                    className="w-full text-left font-mono bg-white dark:bg-background hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors p-3 rounded-md flex items-center gap-2 group border border-purple-100 dark:border-purple-900/50"
+                  >
+                    <code className="flex-1 text-purple-800 dark:text-purple-200 break-all text-sm">
+                      {`${window.location.origin}/quiz/${courseName}/${quizId}`}
+                    </code>
+                    {copied ? (
+                      <CheckCircle2 className="h-4 w-4 shrink-0 text-green-500 transition-opacity" />
+                    ) : (
+                      <Copy className="h-4 w-4 shrink-0 text-purple-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    )}
+                  </button>
+                </div>
+                <p className="text-sm text-center text-muted-foreground">
+                  Recipients can take the quiz and their results will appear on your dashboard
+                </p>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Delete Submission</DialogTitle>
+                <DialogDescription className="text-destructive">
+                  Are you sure you want to delete {submissionToDelete?.userName}'s submission? This action cannot be undone.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter className="flex gap-2 sm:gap-0">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowDeleteModal(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={handleConfirmDelete}
+                >
+                  Delete Permanently
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          <QuizResultsModal
+            submission={selectedSubmission}
+            isOpen={!!selectedSubmission}
+            onClose={() => setSelectedSubmission(null)}
+          />
         </div>
       </div>
-
-      <div className="grid gap-6 md:grid-cols-3 mb-8">
-        <Card className="bg-gradient-to-br from-purple-50 to-white dark:from-purple-950/20 dark:to-background border-purple-100 dark:border-purple-900/50">
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-purple-100 dark:bg-purple-900/50 rounded-lg">
-                <User className="h-6 w-6 text-purple-600 dark:text-purple-400" />
-              </div>
-              <div>
-                <CardTitle>Total Submissions</CardTitle>
-                <CardDescription>Number of completed quizzes</CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <p className="text-4xl font-bold text-purple-600 dark:text-purple-400">
-              {submissions.length}
-            </p>
-          </CardContent>
-        </Card>
-        
-        <Card className="bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/20 dark:to-background border-blue-100 dark:border-blue-900/50">
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 dark:bg-blue-900/50 rounded-lg">
-                <Trophy className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-              </div>
-              <div>
-                <CardTitle>Average Score</CardTitle>
-                <CardDescription>Across all submissions</CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <p className="text-4xl font-bold text-blue-600 dark:text-blue-400">
-              {getAverageScore()}%
-            </p>
-          </CardContent>
-        </Card>
-        
-        <Card className="bg-gradient-to-br from-green-50 to-white dark:from-green-950/20 dark:to-background border-green-100 dark:border-green-900/50">
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-100 dark:bg-green-900/50 rounded-lg">
-                <Calendar className="h-6 w-6 text-green-600 dark:text-green-400" />
-              </div>
-              <div>
-                <CardTitle>Latest Submission</CardTitle>
-                <CardDescription>Most recent quiz completion</CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <p className="text-lg font-medium text-green-600 dark:text-green-400">
-              {submissions.length > 0 
-                ? format(getValidDate(submissions[0].timestamp), 'PPP')
-                : 'No submissions yet'}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {submissions.length === 0 ? (
-          <Card className="col-span-full bg-gradient-to-br from-gray-50 to-white dark:from-gray-950/20 dark:to-background">
-            <CardHeader className="text-center">
-              <CardTitle>No Submissions Yet</CardTitle>
-              <CardDescription>Share the quiz link to start receiving submissions</CardDescription>
-            </CardHeader>
-          </Card>
-        ) : (
-          submissions.map((submission, index) => {
-            const percentage = submission.results && 
-              typeof submission.results.correctAnswers === 'number' && 
-              typeof submission.results.totalQuestions === 'number' && 
-              submission.results.totalQuestions > 0
-                ? Math.round((submission.results.correctAnswers / submission.results.totalQuestions) * 100)
-                : 0;
-            
-            const submissionId = `${submission.timestamp}_${submission.userName}`;
-            
-            return (
-              <Card 
-                key={submissionId}
-                className="overflow-hidden transition-all duration-200 hover:shadow-lg hover:border-purple-200 dark:hover:border-purple-900/50"
-              >
-                <CardHeader className="border-b bg-gradient-to-br from-purple-50 to-white dark:from-purple-950/20 dark:to-background">
-                  <div className="flex items-center justify-between relative">
-                    <div className="space-y-1">
-                      <CardTitle className="flex items-center gap-2">
-                        <User className="h-4 w-4" />
-                        {submission.userName}
-                      </CardTitle>
-                      <CardDescription className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4" />
-                        {format(getValidDate(submission.timestamp), 'PPP')}
-                      </CardDescription>
-                    </div>
-                    {isAdmin && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="absolute top-2 right-2 text-red-500 hover:text-red-50 hover:bg-red-500 dark:text-red-400 dark:hover:text-red-50 dark:hover:bg-red-500 transition-all duration-200 p-2.5 h-auto w-auto"
-                        onClick={() => handleDeleteClick(submissionId, submission.userName)}
-                      >
-                        <Trash2 className="h-6 w-6" />
-                      </Button>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent className="pt-6">
-                  <div className="space-y-4">
-                    <div>
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-sm text-muted-foreground">Score</span>
-                        <span className={`font-medium ${getScoreColor(percentage)}`}>
-                          {submission.results.correctAnswers}/{submission.results.totalQuestions}
-                        </span>
-                      </div>
-                      <Progress 
-                        value={percentage} 
-                        className="h-2"
-                      />
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted-foreground">Percentage</span>
-                      <span className={`text-lg font-semibold ${getScoreColor(percentage)}`}>
-                        {percentage}%
-                      </span>
-                    </div>
-                  </div>
-                </CardContent>
-                <CardFooter className="bg-gradient-to-br from-gray-50 to-white dark:from-gray-950/20 dark:to-background border-t flex justify-center gap-2 p-4">
-                  <Button 
-                    variant="outline" 
-                    className="w-auto px-6 hover:bg-purple-50 dark:hover:bg-purple-900/20 hover:text-purple-600 dark:hover:text-purple-400 transition-colors"
-                    onClick={() => handleViewResults(submission)}
-                  >
-                    <Eye className="mr-2 h-4 w-4" />
-                    View Results
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    className="w-auto px-6 hover:bg-purple-50 dark:hover:bg-purple-900/20 hover:text-purple-600 dark:hover:text-purple-400 transition-colors"
-                    onClick={() => handleDownloadUserPDF(submission)}
-                  >
-                    <FileText className="mr-2 h-4 w-4" />
-                    Download PDF
-                  </Button>
-                </CardFooter>
-              </Card>
-            );
-          })
-        )}
-      </div>
-
-      <Dialog open={showShareModal} onOpenChange={setShowShareModal}>
-        <DialogContent className="sm:max-w-md bg-gradient-to-br from-white to-purple-50/30 dark:from-background dark:to-purple-950/10">
-          <DialogHeader>
-            <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-              Share Quiz
-            </DialogTitle>
-            <DialogDescription className="text-muted-foreground">
-              Share this quiz with others to collect their responses
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex flex-col gap-4">
-            <div className="p-4 rounded-lg bg-gradient-to-br from-purple-50 to-white dark:from-purple-950/20 dark:to-background border border-purple-100 dark:border-purple-900/50">
-              <p className="text-sm font-medium text-purple-800 dark:text-purple-200 mb-2">Quiz Link</p>
-              <button
-                onClick={handleCopyLink}
-                className="w-full text-left font-mono bg-white dark:bg-background hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors p-3 rounded-md flex items-center gap-2 group border border-purple-100 dark:border-purple-900/50"
-              >
-                <code className="flex-1 text-purple-800 dark:text-purple-200 break-all text-sm">
-                  {`${window.location.origin}/quiz/${courseName}/${quizId}`}
-                </code>
-                {copied ? (
-                  <CheckCircle2 className="h-4 w-4 shrink-0 text-green-500 transition-opacity" />
-                ) : (
-                  <Copy className="h-4 w-4 shrink-0 text-purple-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-                )}
-              </button>
-            </div>
-            <p className="text-sm text-center text-muted-foreground">
-              Recipients can take the quiz and their results will appear on your dashboard
-            </p>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete Submission</DialogTitle>
-            <DialogDescription className="text-destructive">
-              Are you sure you want to delete {submissionToDelete?.userName}'s submission? This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="flex gap-2 sm:gap-0">
-            <Button
-              variant="outline"
-              onClick={() => setShowDeleteModal(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleConfirmDelete}
-            >
-              Delete Permanently
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <QuizResultsModal
-        submission={selectedSubmission}
-        isOpen={!!selectedSubmission}
-        onClose={() => setSelectedSubmission(null)}
-      />
     </div>
   );
 }

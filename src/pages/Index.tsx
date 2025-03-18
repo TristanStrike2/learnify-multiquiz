@@ -101,8 +101,8 @@ export function IndexPage() {
       localStorage.removeItem('moduleResults');
       localStorage.removeItem('quizState');
       
-      // Navigate to admin page
-      navigate(`/quiz/${urlSafeName}/${quizId}/results/admin`);
+      // Navigate to admin submissions page
+      navigate(`/admin/submissions/${quizId}`);
     } catch (error) {
       console.error('Error sharing quiz:', error);
       toast({
@@ -280,7 +280,7 @@ export function IndexPage() {
       });
 
       // Navigate to submissions page
-      navigate(`/quiz/${urlSafeName}/${quizId}/results/admin`);
+      navigate(`/admin/submissions/${quizId}`);
     } catch (error) {
       console.error('Error sharing quiz:', error);
       toast({
@@ -365,7 +365,7 @@ export function IndexPage() {
               </p>
             </div>
             <Button 
-              onClick={() => navigate('/')}
+              onClick={() => navigate('/admin/manage')}
               variant="outline"
               className="hover:bg-purple-50 dark:hover:bg-purple-900/20"
             >
