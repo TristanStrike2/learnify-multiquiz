@@ -230,7 +230,7 @@ function QuizCard({ quiz, type, onArchive, onUnarchive, onView }: QuizCardProps)
       {/* Decorative gradient background */}
       <div className="absolute inset-0 bg-gradient-to-r from-purple-500/5 via-transparent to-blue-500/5 group-hover:opacity-75 transition-opacity" />
 
-      <div className="relative p-6 flex flex-col gap-4">
+      <div className="relative p-6 flex items-start gap-6">
         {/* Left section - Title and metadata */}
         <div className="flex-1">
           <h3 className="text-xl font-semibold tracking-tight mb-2 group-hover:text-primary transition-colors bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
@@ -240,28 +240,26 @@ function QuizCard({ quiz, type, onArchive, onUnarchive, onView }: QuizCardProps)
             <Clock className="h-4 w-4 text-purple-500" />
             Created {format(quiz.createdAt.toDate(), 'PPP')}
           </p>
-        </div>
-
-        {/* Hover score overlay */}
-        <div className="h-0 overflow-visible relative">
-          <div className="absolute inset-x-0 -top-2 opacity-0 group-hover:opacity-100 transition-all duration-300">
-            <div className="bg-gradient-to-r from-purple-100 to-blue-100 dark:from-purple-950/20 dark:to-blue-950/20 rounded-lg py-2 px-3 flex items-center justify-center shadow-sm">
+          
+          {/* Hover message */}
+          <div className="absolute right-[280px] top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none">
+            <div className="bg-popover/95 rounded-lg shadow-lg px-3 py-2 text-sm text-popover-foreground border min-w-[160px]">
               {averageScore !== null ? (
-                <div className="flex items-center gap-3">
-                  <div className="text-sm font-medium text-foreground/90">
+                <div className="space-y-0.5">
+                  <div className="font-medium">
                     {Math.round(quiz.numberOfQuestions * (averageScore / 100))} / {quiz.numberOfQuestions}
                   </div>
                   <div className={cn(
                     "text-sm font-medium",
-                    averageScore >= 80 ? "text-green-600 dark:text-green-400" :
-                    averageScore >= 60 ? "text-yellow-600 dark:text-yellow-400" :
-                    "text-red-600 dark:text-red-400"
+                    averageScore >= 80 ? "text-green-500" :
+                    averageScore >= 60 ? "text-yellow-500" :
+                    "text-red-500"
                   )}>
-                    ({averageScore}% success)
+                    {averageScore}% Success
                   </div>
                 </div>
               ) : (
-                <div className="text-sm font-medium text-muted-foreground">No submissions yet</div>
+                <div className="font-medium">No Data</div>
               )}
             </div>
           </div>
