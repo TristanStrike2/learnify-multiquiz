@@ -95,23 +95,42 @@ function QuizCard({ quiz, type, onArchive, onUnarchive, onView }: QuizCardProps)
   const { toast } = useToast();
 
   useEffect(() => {
+    console.log(`Setting up subscription for quiz ${quiz.id}`);
     const unsubscribe = subscribeToQuizSubmissions(quiz.id, (submissions) => {
+      console.log(`Received ${submissions.length} submissions for quiz ${quiz.id}`);
       setSubmissionsCount(submissions.length);
       
       // Calculate average score
       if (submissions.length > 0) {
-        const totalScore = submissions.reduce((acc, sub) => {
-          const correctAnswers = sub.results?.correctAnswers || 0;
-          const totalQuestions = sub.results?.totalQuestions || 0;
-          return acc + (correctAnswers / totalQuestions) * 100;
-        }, 0);
-        setAverageScore(Math.round(totalScore / submissions.length));
+        const validSubmissions = submissions.filter(
+          sub => sub.results && 
+          typeof sub.results.correctAnswers === 'number' && 
+          typeof sub.results.totalQuestions === 'number' && 
+          sub.results.totalQuestions > 0
+        );
+        
+        if (validSubmissions.length > 0) {
+          const totalScore = validSubmissions.reduce((acc, sub) => {
+            const correctAnswers = sub.results.correctAnswers;
+            const totalQuestions = sub.results.totalQuestions;
+            return acc + (correctAnswers / totalQuestions) * 100;
+          }, 0);
+          const newAverage = Math.round(totalScore / validSubmissions.length);
+          console.log(`Calculated new average score for quiz ${quiz.id}:`, newAverage);
+          setAverageScore(newAverage);
+        } else {
+          setAverageScore(null);
+        }
       } else {
+        console.log(`No submissions for quiz ${quiz.id}, setting average to null`);
         setAverageScore(null);
       }
     });
 
-    return () => unsubscribe();
+    return () => {
+      console.log(`Cleaning up subscription for quiz ${quiz.id}`);
+      unsubscribe();
+    };
   }, [quiz.id]);
 
   const handleDelete = async (quiz: SharedQuiz) => {

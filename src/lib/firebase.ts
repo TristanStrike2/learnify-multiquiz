@@ -422,14 +422,25 @@ export function subscribeToQuizSubmissions(
 ) {
   const db = ensureFirestore();
   const submissionsRef = collection(db, `quizzes/${quizId}/submissions`);
-  const submissionsQuery = query(submissionsRef, orderBy('timestamp', 'desc'));
+  const submissionsQuery = query(
+    submissionsRef,
+    orderBy('timestamp', 'desc')
+  );
   
-  return onSnapshot(submissionsQuery, (snapshot) => {
-    const submissions = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
-    callback(submissions);
+  console.log(`Setting up submission subscription for quiz: ${quizId}`);
+  
+  return onSnapshot(submissionsQuery, {
+    next: (snapshot) => {
+      const submissions = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      console.log(`Received ${submissions.length} submissions update for quiz ${quizId}`);
+      callback(submissions);
+    },
+    error: (error) => {
+      console.error(`Error in submission subscription for quiz ${quizId}:`, error);
+    }
   });
 }
 
