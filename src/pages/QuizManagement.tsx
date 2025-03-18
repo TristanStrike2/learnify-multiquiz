@@ -230,31 +230,7 @@ function QuizCard({ quiz, type, onArchive, onUnarchive, onView }: QuizCardProps)
       {/* Decorative gradient background */}
       <div className="absolute inset-0 bg-gradient-to-r from-purple-500/5 via-transparent to-blue-500/5 group-hover:opacity-75 transition-opacity" />
 
-      {/* Hover overlay with score information */}
-      <div className="absolute inset-0 bg-gradient-to-br from-black/60 to-black/40 opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center">
-        <div className="text-center text-white transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
-          {averageScore !== null ? (
-            <>
-              <div className="text-4xl font-bold mb-2">
-                {Math.round(quiz.numberOfQuestions * (averageScore / 100))} / {quiz.numberOfQuestions}
-              </div>
-              <div className="text-lg opacity-90">Questions Correct</div>
-              <div className={cn(
-                "text-2xl font-semibold mt-2",
-                averageScore >= 80 ? "text-green-400" :
-                averageScore >= 60 ? "text-yellow-400" :
-                "text-red-400"
-              )}>
-                {averageScore}% Success Rate
-              </div>
-            </>
-          ) : (
-            <div className="text-2xl font-semibold opacity-90">No Submissions Yet</div>
-          )}
-        </div>
-      </div>
-
-      <div className="relative p-6 flex items-start gap-6">
+      <div className="relative p-6 flex flex-col gap-4">
         {/* Left section - Title and metadata */}
         <div className="flex-1">
           <h3 className="text-xl font-semibold tracking-tight mb-2 group-hover:text-primary transition-colors bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
@@ -264,6 +240,29 @@ function QuizCard({ quiz, type, onArchive, onUnarchive, onView }: QuizCardProps)
             <Clock className="h-4 w-4 text-purple-500" />
             Created {format(quiz.createdAt.toDate(), 'PPP')}
           </p>
+        </div>
+
+        {/* Hover score overlay */}
+        <div className="h-16 relative rounded-lg overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-blue-500/10 opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center">
+            {averageScore !== null ? (
+              <div className="flex items-center gap-3 text-foreground/90">
+                <div className="text-lg font-semibold">
+                  {Math.round(quiz.numberOfQuestions * (averageScore / 100))} / {quiz.numberOfQuestions}
+                </div>
+                <div className={cn(
+                  "text-lg font-medium",
+                  averageScore >= 80 ? "text-green-600 dark:text-green-400" :
+                  averageScore >= 60 ? "text-yellow-600 dark:text-yellow-400" :
+                  "text-red-600 dark:text-red-400"
+                )}>
+                  ({averageScore}%)
+                </div>
+              </div>
+            ) : (
+              <div className="text-sm font-medium text-muted-foreground">No submissions yet</div>
+            )}
+          </div>
         </div>
 
         {/* Stats section with archive button */}
