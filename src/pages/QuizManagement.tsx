@@ -242,8 +242,8 @@ function QuizCard({ quiz, type, onArchive, onUnarchive, onView }: QuizCardProps)
           </p>
           
           {/* Hover message */}
-          <div className="absolute right-[280px] top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none">
-            <div className="bg-popover/95 rounded-lg shadow-lg px-3 py-2 text-sm text-popover-foreground border min-w-[160px]">
+          <div className="absolute right-[340px] top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none">
+            <div className="bg-popover/95 rounded-lg shadow-lg px-3 py-2 text-sm text-popover-foreground border min-w-[140px] text-center">
               {averageScore !== null ? (
                 <div className="space-y-0.5">
                   <div className="font-medium">
