@@ -253,7 +253,7 @@ export function SubmissionsPage() {
   const isAdmin = useMemo(() => {
     const path = location.pathname;
     console.log('Checking admin status for path:', path);
-    const isAdminRoute = path.endsWith('/results/admin');
+    const isAdminRoute = path.includes('/admin/') || path.endsWith('/results/admin');
     console.log('Is admin route?', isAdminRoute);
     return isAdminRoute;
   }, [location.pathname]);
@@ -268,29 +268,75 @@ export function SubmissionsPage() {
   useEffect(() => {
     if (!quizId) return;
 
+    console.log('Setting up subscription for quiz:', quizId);
     const unsubscribe = subscribeToQuizSubmissions(quizId, (submissions) => {
       // Transform submissions to include their IDs
-      const submissionsWithIds = submissions.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as (QuizSubmission & { id: string })[];
+      const submissionsWithIds = submissions.map(doc => {
+        // Handle both QueryDocumentSnapshot and raw data
+        const data = doc.data ? doc.data() : doc;
+        console.log('Processing submission:', { id: doc.id || data.id, data });
+        
+        // Validate submission data
+        if (!data || !data.userName || !data.results) {
+          console.warn('Invalid submission data:', data);
+          return null;
+        }
+
+        // Create a properly structured submission object
+        const submissionObj = {
+          id: doc.id || data.id,
+          userName: data.userName,
+          timestamp: data.timestamp,
+          results: {
+            correctAnswers: data.results.correctAnswers || 0,
+            totalQuestions: data.results.totalQuestions || 0,
+            incorrectAnswers: data.results.incorrectAnswers || 0,
+            moduleId: data.results.moduleId,
+            questionsWithAnswers: Array.isArray(data.results.questionsWithAnswers) 
+              ? data.results.questionsWithAnswers 
+              : [],
+            courseName: data.results.courseName,
+            modules: Array.isArray(data.results.modules) 
+              ? data.results.modules 
+              : []
+          }
+        };
+
+        console.log('Processed submission object:', submissionObj);
+        return submissionObj;
+      }).filter(Boolean) as (QuizSubmission & { id: string })[];
       
+      console.log('Final submissions array:', submissionsWithIds);
       setSubmissions(submissionsWithIds);
       
       // Calculate average score
       if (submissionsWithIds.length > 0) {
         const totalScore = submissionsWithIds.reduce((acc, sub) => {
-          const correctAnswers = sub.results?.correctAnswers || 0;
-          const totalQuestions = sub.results?.totalQuestions || 0;
+          if (!sub.results || typeof sub.results.correctAnswers !== 'number' || typeof sub.results.totalQuestions !== 'number') {
+            console.warn('Invalid submission data for average calculation:', sub);
+            return acc;
+          }
+          const correctAnswers = sub.results.correctAnswers;
+          const totalQuestions = sub.results.totalQuestions;
+          if (totalQuestions === 0) {
+            console.warn('Submission has 0 total questions:', sub);
+            return acc;
+          }
           return acc + (correctAnswers / totalQuestions) * 100;
         }, 0);
-        setAverageScore(Math.round(totalScore / submissionsWithIds.length));
+        const average = Math.round(totalScore / submissionsWithIds.length);
+        console.log('Calculated average score:', average);
+        setAverageScore(average);
       } else {
+        console.log('No submissions found, setting average to null');
         setAverageScore(null);
       }
     });
 
-    return () => unsubscribe();
+    return () => {
+      console.log('Cleaning up subscription for quiz:', quizId);
+      unsubscribe();
+    };
   }, [quizId]);
 
   const handleDownloadPDF = async () => {
